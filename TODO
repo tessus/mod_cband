@@ -1,0 +1,5 @@
+- reformat source
+- replace fprintf to stderr with ap_log DEBUG
+- IPv6 support
+- json output
+- autotools (create .ac and .am files)
