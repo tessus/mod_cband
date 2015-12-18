@@ -43,30 +43,34 @@
 
 #include "libpatricia.c"
 
-#define MAX_CLASS_STR_LEN		16
-#define MAX_DST_LEN			16
-#define MAX_VIRTUALHOST_NAME		0x100
-#define MAX_PERIOD_LEN			0x20
-#define MAX_TRAFFIC_LEN			0x100
-#define MAX_REMOTE_HOSTS		8192
-#define MAX_HASH_TABLE_LEN		0x100
-#define MAX_SHMEM_SEGMENTS		0x1000
-#define MAX_SHMEM_ENTRIES		0x1000
-#define MAX_SLOW_REMOTE_LOOPS		5
-#define MAX_DELAY_LOOPS			100
-#define MAX_OVERLIMIT_DELAY		10
-#define MAX_PULSE_LEN			250000
-#define MAX_PULSES			4
-#define MAX_CHUNK_LEN			0x8000
-#define CONST_PULSE_LEN			1000000
-#define MAX_SLEEP_TIME			100000
-#define MAX_REMOTE_HOST_LIFE		10
-#define MIN_SPEED			1024
-#define MIN_SLEEP_TIME			50000
-#define PERIOD_LEN			1
-#define DEFAULT_REFRESH			15
-#define CBAND_HANDLER_ALL		0
-#define CBAND_HANDLER_ME		1
+#define MAX_CLASS_STR_LEN       16
+#define MAX_DST_LEN             16
+#define MAX_VIRTUALHOST_NAME    0x100
+#define MAX_PERIOD_LEN          0x20
+#define MAX_TRAFFIC_LEN         0x100
+#define MAX_REMOTE_HOSTS        8192
+#define MAX_HASH_TABLE_LEN      0x100
+#define MAX_SHMEM_SEGMENTS      0x1000
+#define MAX_SHMEM_ENTRIES       0x1000
+#define MAX_SLOW_REMOTE_LOOPS   5
+#define MAX_DELAY_LOOPS         100
+#define MAX_OVERLIMIT_DELAY     10
+#define MAX_PULSE_LEN           250000
+#define MAX_PULSES              4
+#define MAX_CHUNK_LEN           0x8000
+#define CONST_PULSE_LEN         1000000
+#define MAX_SLEEP_TIME          100000
+#define MAX_REMOTE_HOST_LIFE    10
+#define MIN_SPEED               1024
+#define MIN_SLEEP_TIME          50000
+#define PERIOD_LEN              1
+#define DEFAULT_REFRESH         15
+#define CBAND_HANDLER_ALL       0
+#define CBAND_HANDLER_ME        1
+
+#if AP_SERVER_MAJORVERSION_NUMBER == 2 && AP_SERVER_MINORVERSION_NUMBER >= 4
+    #define APACHE24
+#endif
 
 #if (defined(__GNU_LIBRARY__) && !defined(_SEM_SEMUN_UNDEFINED)) || defined(__FreeBSD__)
 /* union semun is defined by including <sys/sem.h> */
