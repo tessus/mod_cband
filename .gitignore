@@ -1,0 +1,8 @@
+.libs/
+*.la
+*.lo
+*.o
+*.slo
+Makefile
+config.log
+config.status
