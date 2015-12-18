@@ -5,7 +5,7 @@
  *
  * Copyright (c) 2005 Lukasz Dembinski <dembol@cband.linux.pl>
  * All Rights Reserved
- * 
+ *
  * Date:	2006/05/28
  * Info:	mod_cband Apache 2 module
  * Contact:	mailto: <dembol@cband.linux.pl>
@@ -23,16 +23,16 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- *	     
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *		     
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
- *					 
+ *
  */
 
 #include "httpd.h"
@@ -92,16 +92,16 @@ int mod_cband_shmem_seg_new(void)
 
     seg_idx  = ++config->shmem_seg_idx;
     shmem_id = config->shmem_seg[seg_idx].shmem_id;
-    
+
     if (shmem_id == 0) {
 	shmem_id = shmget(IPC_PRIVATE, sizeof(mod_cband_shmem_data) * MAX_SHMEM_ENTRIES, IPC_CREAT | 0666);
-	
+
 	if (shmem_id < 0) {
 	    fprintf(stderr, "apache2_mod_cband: cannot create shared memory segment for virtual hosts\n");
 	    fflush(stderr);
 	    return -1;
 	}
-	
+
         config->shmem_seg[seg_idx].shmem_id = shmem_id;
 	config->shmem_seg[seg_idx].shmem_data = (mod_cband_shmem_data *)shmat(shmem_id, 0, 0);
 	memset(config->shmem_seg[seg_idx].shmem_data, 0, sizeof(mod_cband_shmem_data) * MAX_SHMEM_ENTRIES);
@@ -116,7 +116,7 @@ mod_cband_shmem_data *mod_cband_shmem_init(void)
 {
     mod_cband_shmem_data *data;
     int seg_idx, entry_idx;
-    
+
     seg_idx = config->shmem_seg_idx;
     if ((seg_idx < 0) || (config->shmem_seg[seg_idx].shmem_entry_idx >= MAX_SHMEM_ENTRIES - 1))
 	config->shmem_seg_idx = seg_idx = mod_cband_shmem_seg_new();
@@ -140,14 +140,14 @@ void mod_cband_sem_init(int sem_id)
 {
     union semun arg;
     unsigned short values[1];
-    
+
     values[0] = 1;
     arg.val   = 1;
     arg.array = values;
-    
-    semctl(sem_id, 0, SETALL, arg);    
-    
-    /* 
+
+    semctl(sem_id, 0, SETALL, arg);
+
+    /*
      * We should also set owner of the semaphore ...
      */
 }
@@ -156,29 +156,29 @@ void mod_cband_sem_remove(int sem_id)
 {
     union semun arg;
 
-    arg.val   = 0;    
-    semctl(sem_id, 0, IPC_RMID, arg);    
+    arg.val   = 0;
+    semctl(sem_id, 0, IPC_RMID, arg);
 }
 
 void mod_cband_sem_down(int sem_id)
 {
     struct sembuf sops;
-    
+
     sops.sem_num  = 0;
     sops.sem_op   = -1;
     sops.sem_flg  = SEM_UNDO;
-    
+
     semop(sem_id, &sops, 1);
 }
 
 void mod_cband_sem_up(int sem_id)
 {
     struct sembuf sops;
-        
+
     sops.sem_num  = 0;
     sops.sem_op   = 1;
     sops.sem_flg  = SEM_UNDO;
-    
+
     semop(sem_id, &sops, 1);
 }
 
@@ -197,16 +197,16 @@ int mod_cband_remote_hosts_init(void)
 	    fflush(stderr);
 	    return -1;
 	}
-	
+
         config->remote_hosts.hosts = (mod_cband_remote_host *)shmat(shmem_id, 0, 0);
     }
-    
+
     if (config->remote_hosts.hosts != NULL)
 	memset(config->remote_hosts.hosts, 0, seg_size);
-    
+
     config->remote_hosts.sem_id = sem_id = semget(IPC_PRIVATE, 1, IPC_CREAT | 0666);
     mod_cband_sem_init(sem_id);
-    
+
     return 0;
 }
 
@@ -221,17 +221,17 @@ mod_cband_virtualhost_config_entry *mod_cband_get_virtualhost_entry_(char *virtu
 
     if (virtualhost == NULL || config == NULL)
 	return NULL;
-    
+
     entry = config->next_virtualhost;
-    
+
     while(entry != NULL) {
 
         if (!strcmp(entry->virtual_name, virtualhost) && (line == entry->virtual_defn_line))
 	    return entry;
-    
+
 	if (entry->next == NULL)
 	    break;
-	    
+
 	entry = entry->next;
     }
 
@@ -241,30 +241,30 @@ mod_cband_virtualhost_config_entry *mod_cband_get_virtualhost_entry_(char *virtu
 	    fflush(stderr);
 	    return NULL;
 	}
-	
+
 	memset(new_entry, 0, sizeof(mod_cband_virtualhost_config_entry));
 	new_entry->virtual_name       = virtualhost;
 	new_entry->virtual_defn_line  = line;
 	new_entry->virtual_port       = port;
 	new_entry->virtual_limit_mult = 1024;
-	
+
 	if (new_entry->shmem_data == NULL)
 	    new_entry->shmem_data = mod_cband_shmem_init();
 
 	for (i = 0; i < DST_CLASS; i++)
 	    new_entry->virtual_class_limit_mult[i] = 1024;
-	
+
 	if (entry == NULL)
 	    config->next_virtualhost = new_entry;
 	else
 	    entry->next = new_entry;
-	
-	return new_entry;    
+
+	return new_entry;
     }
-    
-    return NULL;    
+
+    return NULL;
 }
- 
+
 mod_cband_virtualhost_config_entry *mod_cband_get_virtualhost_entry(server_rec *s, ap_conf_vector_t *module_config, int create)
 {
     char *virtualhost;
@@ -292,26 +292,26 @@ mod_cband_user_config_entry *mod_cband_get_user_entry(char *user, ap_conf_vector
 
     if (user == NULL || config == NULL)
 	return NULL;
-    
+
     entry = config->next_user;
-    
+
     while(entry != NULL) {
 	if (!strcmp(entry->user_name, user))
 	    return entry;
-    
+
 	if (entry->next == NULL)
 	    break;
-	    
+
 	entry = entry->next;
     }
-    
+
     if (create) {
 	if ((new_entry = apr_palloc(config->p, sizeof(mod_cband_user_config_entry))) == NULL) {
 	    fprintf(stderr, "apache2_mod_cband: cannot alloc memory for user entry\n");
 	    fflush(stderr);
 	    return NULL;
 	}
-	
+
 	memset(new_entry, 0, sizeof(mod_cband_user_config_entry));
 	new_entry->user_name       = user;
 	new_entry->user_limit_mult = 1024;
@@ -326,11 +326,11 @@ mod_cband_user_config_entry *mod_cband_get_user_entry(char *user, ap_conf_vector
 	    config->next_user = new_entry;
 	else
 	    entry->next = new_entry;
-	
-	return new_entry;    
+
+	return new_entry;
     }
-	
-    return NULL;    
+
+    return NULL;
 }
 
 /**
@@ -343,16 +343,16 @@ mod_cband_class_config_entry *mod_cband_get_class_entry(char *dest, ap_conf_vect
 
     if (dest == NULL || config == NULL)
 	return NULL;
-    
+
     entry = config->next_class;
-    
+
     while(entry != NULL) {
 	if (!strcmp(entry->class_name, dest))
 	    return entry;
-    
+
 	if (entry->next == NULL)
 	    break;
-	    
+
 	entry = entry->next;
     }
 
@@ -362,19 +362,19 @@ mod_cband_class_config_entry *mod_cband_get_class_entry(char *dest, ap_conf_vect
 	    fflush(stderr);
 	    return NULL;
 	}
-	
+
 	memset(new_entry, 0, sizeof(mod_cband_class_config_entry));
 	new_entry->class_name = dest;
-    
+
 	if (entry == NULL)
 	    config->next_class = new_entry;
 	else
 	    entry->next = new_entry;
-	
-	return new_entry;    
+
+	return new_entry;
     }
-    
-    return NULL;    
+
+    return NULL;
 }
 
 static char *username_arg  = NULL;
@@ -388,10 +388,10 @@ int mod_cband_check_duplicate(void *ptr, const char *command, const char *arg, s
 	    ap_log_error(APLOG_MARK, APLOG_WARNING, 0, s, "Duplicate command '%s' for %s:%d", (char *)command, s->server_hostname, s->defn_line_number);
 	else
 	    ap_log_error(APLOG_MARK, APLOG_WARNING, 0, s, "Duplicate command '%s'", (char *)command);
-	
+
 	return 1;
     }
-    
+
     return 0;
 }
 
@@ -421,10 +421,10 @@ int mod_cband_check_virtualhost_class_command(mod_cband_virtualhost_config_entry
 int mod_cband_check_user_command(mod_cband_user_config_entry **entry, cmd_parms *parms, const char *command, const char **err)
 {
     *err = NULL;
-    
+
     if ((*err = ap_check_cmd_context(parms, GLOBAL_ONLY)) != NULL)
 	return 0;
-    
+
     if ((*entry = mod_cband_get_user_entry(username_arg, parms->server->module_config, 0)) == NULL) {
     	ap_log_error(APLOG_MARK, APLOG_WARNING, 0, parms->server, "Invalid command '%s', undefined user name", (char *)command);
 	return 0;
@@ -437,14 +437,14 @@ static const char *mod_cband_set_default_url(cmd_parms *parms, void *mconfig, co
 {
     if (!mod_cband_check_duplicate(config->default_limit_exceeded, "CBandDefaultExceededURL", arg, parms->server))
 	config->default_limit_exceeded = (char *)arg;
-      
+
     return NULL;
 }
 
 static const char *mod_cband_set_default_code(cmd_parms *parms, void *mconfig, const char *arg)
 {
     config->default_limit_exceeded_code = atoi((char *)arg);
-      
+
     return NULL;
 }
 
@@ -459,7 +459,7 @@ static const char *mod_cband_set_random_pulse(cmd_parms *parms, void *mconfig, i
 
     if (!mod_cband_check_duplicate((void *)config->random_pulse, "CBandRandomPulse", flag_str, parms->server))
 	config->random_pulse = (unsigned long)flag;
-      
+
     return NULL;
 }
 
@@ -467,7 +467,7 @@ static const char *mod_cband_set_score_flush_period(cmd_parms *parms, void *mcon
 {
     if (!mod_cband_check_duplicate((void *)config->score_flush_period, "CBandScoreFlushPeriod", arg, parms->server))
 	config->score_flush_period = atol((char *)arg);
-      
+
     return NULL;
 }
 
@@ -478,7 +478,7 @@ static const char *mod_cband_set_limit(cmd_parms *parms, void *mconfig, const ch
     if (mod_cband_check_virtualhost_command(&entry, parms, "CBandLimit") &&
        (!mod_cband_check_duplicate((void *)entry->virtual_limit, "CBandLimit", arg, parms->server)))
 	    entry->virtual_limit = mod_cband_conf_get_limit_kb((char *)arg, &entry->virtual_limit_mult);
-    
+
     return NULL;
 }
 
@@ -489,7 +489,7 @@ static const char *mod_cband_set_period(cmd_parms *parms, void *mconfig, const c
     if (mod_cband_check_virtualhost_command(&entry, parms, "CBandPeriod") &&
        (!mod_cband_check_duplicate((void *)entry->refresh_time, "CBandPeriod", arg, parms->server)))
 	    entry->refresh_time = mod_cband_conf_get_period_sec((char *)arg);
-    
+
     return NULL;
 }
 
@@ -500,7 +500,7 @@ static const char *mod_cband_set_period_slice(cmd_parms *parms, void *mconfig, c
     if (mod_cband_check_virtualhost_command(&entry, parms, "CBandPeriodSlice") &&
        (!mod_cband_check_duplicate((void *)entry->slice_len, "CBandPeriodSlice", arg, parms->server)))
 	    entry->slice_len = mod_cband_conf_get_period_sec((char *)arg);
-    
+
     return NULL;
 }
 
@@ -511,7 +511,7 @@ static const char *mod_cband_set_url(cmd_parms *parms, void *mconfig, const char
     if (mod_cband_check_virtualhost_command(&entry, parms, "CBandExceededURL") &&
        (!mod_cband_check_duplicate(entry->virtual_limit_exceeded, "CBandExceededURL", arg, parms->server)))
 	    entry->virtual_limit_exceeded = (char *)arg;
-      
+
     return NULL;
 }
 
@@ -526,7 +526,7 @@ static const char *mod_cband_set_speed(cmd_parms *parms, void *mconfig, const ch
 	entry->shmem_data->max_speed.max_conn = entry->shmem_data->curr_speed.max_conn = atol((char *)arg3);
 	entry->shmem_data->shared_kbps        = entry->shmem_data->curr_speed.kbps;
     }
-    
+
     return NULL;
 }
 
@@ -540,7 +540,7 @@ static const char *mod_cband_set_remote_speed(cmd_parms *parms, void *mconfig, c
 	entry->shmem_data->remote_speed.rps      = atol((char *)arg2);
 	entry->shmem_data->remote_speed.max_conn = atol((char *)arg3);
     }
-    
+
     return NULL;
 }
 
@@ -556,7 +556,7 @@ char *mod_cband_get_next_char(const char *str, char val)
 	    return (char *)(str + i);
 	}
     }
-    
+
     return NULL;
 }
 
@@ -575,11 +575,11 @@ char *mod_cband_get_next_notchar(const char *str, char val, int offset)
 	if (str[i] != val) {
 	    if ((ptr = mod_cband_get_next_char(str, val)) != NULL)
 		*ptr = 0;
-	    	    
+
 	    return (char *)(str + i);
 	}
     }
-    
+
     return NULL;
 }
 
@@ -588,23 +588,23 @@ static const char *mod_cband_set_class_remote_speed(cmd_parms *parms, void *mcon
     mod_cband_class_config_entry *entry;
     mod_cband_virtualhost_config_entry *entry_virtual;
     char *arg1, *arg2, *arg3, *arg4;
-    
+
     arg1 = mod_cband_get_next_notchar(args, ' ', 0);
     arg2 = mod_cband_get_next_notchar((const char *)arg1, ' ', 1);
     arg3 = mod_cband_get_next_notchar((const char *)arg2, ' ', 1);
     arg4 = mod_cband_get_next_notchar((const char *)arg3, ' ', 1);
-    
+
     if (arg1 == NULL || arg2 == NULL || arg3 == NULL || arg4 == NULL) {
 	ap_log_error(APLOG_MARK, APLOG_WARNING, 0, parms->server, "CBandClassRemoteSpeed takes four arguments");
 	return NULL;
     }
-    
+
     if (mod_cband_check_virtualhost_class_command(&entry_virtual, &entry, parms, "CBandClassRemoteSpeed", arg1)) {
 	entry_virtual->virtual_class_speed[entry->class_nr].kbps     = mod_cband_conf_get_speed_kbps((char *)arg2);
         entry_virtual->virtual_class_speed[entry->class_nr].rps      = atol((char *)arg3);
 	entry_virtual->virtual_class_speed[entry->class_nr].max_conn = atol((char *)arg4);
     }
-    
+
     return NULL;
 }
 
@@ -618,25 +618,25 @@ static const char *mod_cband_set_exceeded_speed(cmd_parms *parms, void *mconfig,
 	entry->shmem_data->over_speed.rps      = atol((char *)arg2);
 	entry->shmem_data->over_speed.max_conn = atol((char *)arg3);
     }
-    
+
     return NULL;
 }
 
 static const char *mod_cband_set_scoreboard(cmd_parms *parms, void *mconfig, const char *arg)
 {
     mod_cband_virtualhost_config_entry *entry;
-    
+
     if (mod_cband_check_virtualhost_command(&entry, parms, "CBandScoreboard") &&
        (!mod_cband_check_duplicate(entry->virtual_scoreboard, "CBandScoreboard", arg, parms->server)))
 	entry->virtual_scoreboard = (char *)arg;
-      
+
     return NULL;
 }
 
 static const char *mod_cband_set_user(cmd_parms *parms, void *mconfig, const char *arg)
 {
     mod_cband_virtualhost_config_entry *entry;
-    
+
     if ((entry = mod_cband_get_virtualhost_entry(parms->server, parms->server->module_config, 1)) == NULL) {
     	ap_log_error(APLOG_MARK, APLOG_WARNING, 0, parms->server, "Invalid command 'CBandUser %s', undefined virtualhost name", (char *)arg);
 	return NULL;
@@ -646,10 +646,10 @@ static const char *mod_cband_set_user(cmd_parms *parms, void *mconfig, const cha
     	ap_log_error(APLOG_MARK, APLOG_WARNING, 0, parms->server, "Invalid command 'CBandUser %s', undefined user", (char *)arg);
 	return NULL;
     }
-    
+
     if (!mod_cband_check_duplicate(entry->virtual_user, "CBandUser", arg, parms->server))
 	entry->virtual_user = (char *)arg;
-      
+
     return NULL;
 }
 
@@ -659,7 +659,7 @@ static const char *mod_cband_user_section(cmd_parms *parms, void *mconfig, const
     const char *endp = ap_strrchr_c(arg, '>');
     char *username;
     const char *err;
-    
+
     if ((err = ap_check_cmd_context(parms, GLOBAL_ONLY)) != NULL)
 	return err;
 
@@ -673,10 +673,10 @@ static const char *mod_cband_user_section(cmd_parms *parms, void *mconfig, const
     fflush(stderr);
 #endif
 
-    if ((mod_cband_get_user_entry(username, parms->server->module_config, 0)) != NULL) 
+    if ((mod_cband_get_user_entry(username, parms->server->module_config, 0)) != NULL)
 	return apr_pstrcat(parms->pool, parms->cmd->name, " ", username, "> duplicate user definition", NULL);
 
-    if ((entry = mod_cband_get_user_entry(username, parms->server->module_config, 1)) == NULL) 
+    if ((entry = mod_cband_get_user_entry(username, parms->server->module_config, 1)) == NULL)
         return ap_walk_config(parms->directive->first_child, parms, parms->context);
 
     entry->user_name = username;
@@ -705,7 +705,7 @@ static const char *mod_cband_set_user_period(cmd_parms *parms, void *mconfig, co
     if (mod_cband_check_user_command(&entry, parms, "CBandUserPeriod", &err) &&
        (!mod_cband_check_duplicate((void *)entry->refresh_time, "CBandUserPeriod", arg, parms->server)))
 	entry->refresh_time = mod_cband_conf_get_period_sec((char *)arg);
-    
+
     return err;
 }
 
@@ -717,7 +717,7 @@ static const char *mod_cband_set_user_period_slice(cmd_parms *parms, void *mconf
     if (mod_cband_check_user_command(&entry, parms, "CBandUserPeriodSlice", &err) &&
        (!mod_cband_check_duplicate((void *)entry->slice_len, "CBandUserPeriodSlice", arg, parms->server)))
 	entry->slice_len = mod_cband_conf_get_period_sec((char *)arg);
-    
+
     return err;
 }
 
@@ -725,7 +725,7 @@ static const char *mod_cband_set_user_url(cmd_parms *parms, void *mconfig, const
 {
     mod_cband_user_config_entry *entry;
     const char *err;
-    
+
     if (mod_cband_check_user_command(&entry, parms, "CBandUserExceededURL", &err) &&
        (!mod_cband_check_duplicate(entry->user_limit_exceeded, "CBandUserExceededURL", arg, parms->server)))
 	entry->user_limit_exceeded = (char *)arg;
@@ -737,7 +737,7 @@ static const char *mod_cband_set_user_speed(cmd_parms *parms, void *mconfig, con
 {
     mod_cband_user_config_entry *entry;
     const char *err;
-    
+
     if (mod_cband_check_user_command(&entry, parms, "CBandUserSpeed", &err) &&
        (!mod_cband_check_duplicate((void *)entry->shmem_data->max_speed.kbps, "CBandUserSpeed", arg1, parms->server))) {
     	entry->shmem_data->max_speed.kbps     = entry->shmem_data->curr_speed.kbps     = mod_cband_conf_get_speed_kbps((char *)arg1);
@@ -760,7 +760,7 @@ static const char *mod_cband_set_user_remote_speed(cmd_parms *parms, void *mconf
 	entry->shmem_data->remote_speed.rps      = atol((char *)arg2);
 	entry->shmem_data->remote_speed.max_conn = atol((char *)arg3);
     }
-    
+
     return err;
 }
 
@@ -768,7 +768,7 @@ static const char *mod_cband_set_user_exceeded_speed(cmd_parms *parms, void *mco
 {
     mod_cband_user_config_entry *entry;
     const char *err;
-    
+
     if (mod_cband_check_user_command(&entry, parms, "CBandUserExceededSpeed", &err) &&
        (!mod_cband_check_duplicate((void *)entry->shmem_data->over_speed.kbps, "CBandUserExceededSpeed", arg1, parms->server))) {
     	entry->shmem_data->over_speed.kbps     = mod_cband_conf_get_speed_kbps((char *)arg1);
@@ -783,11 +783,11 @@ static const char *mod_cband_set_user_scoreboard(cmd_parms *parms, void *mconfig
 {
     mod_cband_user_config_entry *entry;
     const char *err;
-    
+
     if (mod_cband_check_user_command(&entry, parms, "CBandUserScoreboard", &err) &&
        (!mod_cband_check_duplicate(entry->user_scoreboard, "CBandUserScoreboard", arg, parms->server)))
 	entry->user_scoreboard = (char *)arg;
-      
+
     return err;
 }
 
@@ -796,9 +796,9 @@ int mod_cband_check_IP(char *addr)
     int i;
     int dig, dot, mask;
     int len;
-    
+
     len = (strlen(addr) > MAX_DST_LEN)?MAX_DST_LEN:strlen(addr);
-    
+
     dig = 0;
     dot = 0;
     for (i = 0; i < len; i++) {
@@ -809,20 +809,20 @@ int mod_cband_check_IP(char *addr)
 	if (addr[i] == '.') {
 	    if (dig == 0)
 		return 0;
-	
+
 	    if (++dot > 3)
 		return 0;
-		
+
 	    dig = 0;
 	} else
 	if (addr[i] == '/') {
 	    if (dig == 0)
 		return 0;
-	
+
 	    mask = atoi(&addr[i + 1]);
 	    if (mask < 0 || mask > 32)
 		return 0;
-	
+
 	    return 1;
 	} else
 	    return 0;
@@ -837,12 +837,12 @@ static const char *mod_cband_class_section(cmd_parms *parms, void *mconfig, cons
     const char *endp = ap_strrchr_c(arg, '>');
     char *classname;
     const char *err;
-    
+
     class_nr++;
-    
+
     if (class_nr >= DST_CLASS)
         return ap_walk_config(parms->directive->first_child, parms, parms->context);
-    
+
     if ((err = ap_check_cmd_context(parms, GLOBAL_ONLY)) != NULL)
 	return err;
 
@@ -850,16 +850,16 @@ static const char *mod_cband_class_section(cmd_parms *parms, void *mconfig, cons
 	return apr_pstrcat(parms->pool, parms->cmd->name, "> directive missing closing '>'", NULL);
 
     classname = apr_pstrndup(parms->pool, arg, endp - arg);
-    
+
 #ifdef DEBUG
     fprintf(stderr, "apache2_mod_cband: class %s (class %d)\n", classname, class_nr);
     fflush(stderr);
 #endif
 
-    if ((mod_cband_get_class_entry(classname, parms->server->module_config, 0)) != NULL) 
+    if ((mod_cband_get_class_entry(classname, parms->server->module_config, 0)) != NULL)
 	return apr_pstrcat(parms->pool, parms->cmd->name, " ", classname, "> duplicate class definition", NULL);
 
-    if ((entry = mod_cband_get_class_entry(classname, parms->server->module_config, 1)) == NULL) 
+    if ((entry = mod_cband_get_class_entry(classname, parms->server->module_config, 1)) == NULL)
         return ap_walk_config(parms->directive->first_child, parms, parms->context);
 
     entry->class_name = classname;
@@ -875,17 +875,17 @@ static const char *mod_cband_set_class_dst(cmd_parms *parms, void *mconfig, cons
     char class_nr_str[MAX_CLASS_STR_LEN];
 
     if (config->tree == NULL)
-	config->tree = New_Patricia(32); 
+	config->tree = New_Patricia(32);
 
     if ((class_nr < DST_CLASS) && (mod_cband_check_IP((char *)arg))) {
 #ifdef DEBUG
 	fprintf(stderr, "apache2_mod_cband: class dst %s (class %d)\n", (char *)arg, class_nr);
 	fflush(stderr);
 #endif
-    
+
         sprintf(class_nr_str, "%d", class_nr);
 	node = make_and_lookup(config->tree, (char *)arg);
-		
+
 	if (node)
     	    node->user1 = apr_pstrdup(config->p, class_nr_str);
     } else {
@@ -903,12 +903,12 @@ static const char *mod_cband_set_class_limit(cmd_parms *parms, void *mconfig, co
 {
     mod_cband_class_config_entry *entry;
     mod_cband_virtualhost_config_entry *entry_virtual;
-    
+
     if ((entry = mod_cband_get_class_entry((char *)arg, parms->server->module_config, 0)) == NULL) {
     	ap_log_error(APLOG_MARK, APLOG_WARNING, 0, parms->server, "Invalid command 'CBandClassLimit %s %s', undefined class name", (char *)arg, (char *)limit);
 	return NULL;
     }
-    
+
     if ((entry_virtual = mod_cband_get_virtualhost_entry(parms->server, parms->server->module_config, 1)) == NULL) {
 	ap_log_error(APLOG_MARK, APLOG_WARNING, 0, parms->server, "Invalid command 'CBandClassLimit %s %s', undefined virtualhost name", (char *)arg, (char *)limit);
 	return NULL;
@@ -916,7 +916,7 @@ static const char *mod_cband_set_class_limit(cmd_parms *parms, void *mconfig, co
 
     entry_virtual->virtual_class_limit[entry->class_nr] = mod_cband_conf_get_limit_kb((char *)limit,
 	&entry_virtual->virtual_class_limit_mult[entry->class_nr]);
-    
+
     return NULL;
 }
 
@@ -925,10 +925,10 @@ static const char *mod_cband_set_user_class_limit(cmd_parms *parms, void *mconfi
     mod_cband_class_config_entry *entry;
     mod_cband_user_config_entry *entry_user;
     const char *err;
-    
+
     if ((err = ap_check_cmd_context(parms, GLOBAL_ONLY)) != NULL)
 	return err;
-    
+
     if ((entry = mod_cband_get_class_entry((char *)arg, parms->server->module_config, 0)) == NULL) {
     	ap_log_error(APLOG_MARK, APLOG_WARNING, 0, parms->server, "Invalid command 'CBandUserClassLimit %s %s', undefined class name", (char *)arg, (char *)limit);
 	return NULL;
@@ -941,7 +941,7 @@ static const char *mod_cband_set_user_class_limit(cmd_parms *parms, void *mconfi
 
     entry_user->user_class_limit[entry->class_nr] = mod_cband_conf_get_limit_kb((char *)limit,
 	&entry_user->user_class_limit_mult[entry->class_nr]);
-    
+
     return NULL;
 }
 
@@ -951,7 +951,7 @@ unsigned long mod_cband_conf_get_period_sec(char *period)
     char unit;
 
     sscanf(period, "%lu%c", &val, &unit);
-    
+
     if (unit == 's' || unit == 'S')
 	return val;
     else
@@ -1037,7 +1037,7 @@ char *mod_cband_create_time(apr_pool_t *p, unsigned long sec)
     sprintf(period, "%uW ", w);
     sprintf(period + strlen(period), "%uD ", d);
     sprintf(period + strlen(period), "%02u:%02u:%02u", h, m, s);
-	
+
     return apr_pstrndup(p, period, strlen(period));
 }
 
@@ -1067,7 +1067,7 @@ char *mod_cband_create_traffic_size(apr_pool_t *p, unsigned long kb, char *unit,
 
     vi = (unsigned long)truncf(v * 100);
     v  = (float)vi / 100;
-    
+
     if (vi % 100)
 	sprintf(traffic, "%0.2f%sB", v, dest_unit);
     else
@@ -1085,7 +1085,7 @@ char *mod_cband_create_period(apr_pool_t *p, unsigned long start, unsigned long 
 
     sec = start + refresh;
     sec -= (unsigned long)(apr_time_now() / 1e6);
-    
+
     return mod_cband_create_time(p, sec);
 }
 
@@ -1114,7 +1114,7 @@ static const command_rec mod_cband_cmds[] =
       RSRC_CONF,
       "CBandRandomPulse - Sets random pulse for FBS algorithm."
     ),
-  
+
   AP_INIT_TAKE1(
       "CBandScoreFlushPeriod",
       mod_cband_set_score_flush_period,
@@ -1122,7 +1122,7 @@ static const command_rec mod_cband_cmds[] =
       RSRC_CONF,
       "CBandScoreFlushPeriod"
     ),
-  
+
   AP_INIT_TAKE1(
       "CBandLimit",
       mod_cband_set_limit,
@@ -1204,8 +1204,8 @@ static const command_rec mod_cband_cmds[] =
     ),
 
   AP_INIT_RAW_ARGS(
-      "<CBandUser", 
-      mod_cband_user_section, 
+      "<CBandUser",
+      mod_cband_user_section,
       NULL,
       RSRC_CONF,
       "CBandUser section"
@@ -1234,7 +1234,7 @@ static const command_rec mod_cband_cmds[] =
       RSRC_CONF,
       "CBandPeriodSlice - Specifies number of bandwidth slices"
     ),
-    
+
   AP_INIT_TAKE1(
       "CBandUserExceededURL",
       mod_cband_set_user_url,
@@ -1276,8 +1276,8 @@ static const command_rec mod_cband_cmds[] =
     ),
 
   AP_INIT_RAW_ARGS(
-      "<CBandClass", 
-      mod_cband_class_section, 
+      "<CBandClass",
+      mod_cband_class_section,
       NULL,
       RSRC_CONF,
       "CBandClass section"
@@ -1314,29 +1314,29 @@ apr_status_t patricia_cleanup(void *p)
 {
     patricia_tree_t *t = (patricia_tree_t *) p;
     Clear_Patricia(t,NULL);
-    
+
     return APR_SUCCESS;
 }
 
-int mod_cband_get_dst(request_rec *r) 
+int mod_cband_get_dst(request_rec *r)
 {
     patricia_node_t *node;
     prefix_t p;
     char *leaf;
-	      
+
     if (config->tree == NULL)
 	return -1;
-    
+
     p.bitlen = 32;
     p.ref_count = 0;
     p.family = AF_INET;
     p.add.sin.s_addr = inet_addr(r->connection->remote_ip);
-		      
+
     node = patricia_search_best(config->tree, &p);
-				    
+
     if (node) {
         leaf = node->user1;
-					            
+
         if (leaf) {
 #ifdef DEBUG
             fprintf(stderr,"%s leaf %s\n",r->connection->remote_ip,leaf);
@@ -1345,7 +1345,7 @@ int mod_cband_get_dst(request_rec *r)
 	    return atoi(leaf);
         }
     }
-    
+
     return -1;
 }
 
@@ -1355,21 +1355,21 @@ int mod_cband_get_remote_host(struct conn_rec *c, int create, mod_cband_virtualh
     mod_cband_remote_host *hosts;
     unsigned long time_now, time_delta;
     in_addr_t addr;
-    
+
     if (entry == NULL)
 	return -1;
-    
+
     if (c->remote_ip != NULL)
-	addr = inet_addr(c->remote_ip);    
+	addr = inet_addr(c->remote_ip);
     else
 	addr = c->remote_addr->sa.sin.sin_addr.s_addr;
-	
-    time_now = apr_time_now();     
+
+    time_now = apr_time_now();
     hosts = config->remote_hosts.hosts;
 
     if (hosts == NULL)
 	return -1;
-    
+
     /* BEGIN CRITICAL SECTION */
     mod_cband_sem_down(config->remote_hosts.sem_id);
     for (i = 0; i < MAX_REMOTE_HOSTS; i++) {
@@ -1378,11 +1378,11 @@ int mod_cband_get_remote_host(struct conn_rec *c, int create, mod_cband_virtualh
 	   (hosts[i].remote_addr == addr) && (hosts[i].virtual_name == entry->virtual_name)) {
 	    mod_cband_sem_up(config->remote_hosts.sem_id);
 	    /* END CRITICAL SECTION */
-	    return i; 
+	    return i;
 	}
     }
 
-    if (create) {    
+    if (create) {
 	for (i = 0; i < MAX_REMOTE_HOSTS; i++) {
 	    time_delta = (time_now - hosts[i].remote_last_time) / 1e6;
 	    if ((hosts[i].used == 0) || ((time_delta > MAX_REMOTE_HOST_LIFE) && (hosts[i].remote_conn <= 0))) {
@@ -1394,7 +1394,7 @@ int mod_cband_get_remote_host(struct conn_rec *c, int create, mod_cband_virtualh
 		hosts[i].virtual_name        = entry->virtual_name;
 		mod_cband_sem_up(config->remote_hosts.sem_id);
 		/* END CRITICAL SECTION */
-		return i; 
+		return i;
 	    }
 	}
     }
@@ -1429,7 +1429,7 @@ int mod_cband_change_remote_connections_lock(int index, int diff)
     return 0;
 }
 
-/* 
+/*
  * Nie trzeba semafora, poniewaz operacje na liczbach 32-bit sa atomowe
  */
 int mod_cband_set_remote_request_time(int index, unsigned long time)
@@ -1442,7 +1442,7 @@ int mod_cband_set_remote_request_time(int index, unsigned long time)
     return 0;
 }
 
-/* 
+/*
  * Nie trzeba semafora, poniewaz operacje na liczbach 32-bit sa atomowe
  */
 int mod_cband_set_remote_current_speed(int index, unsigned long kbps)
@@ -1455,7 +1455,7 @@ int mod_cband_set_remote_current_speed(int index, unsigned long kbps)
     return 0;
 }
 
-/* 
+/*
  * Nie trzeba semafora, poniewaz operacje na liczbach 32-bit sa atomowe
  */
 int mod_cband_set_remote_max_connections(int index, unsigned long max)
@@ -1468,7 +1468,7 @@ int mod_cband_set_remote_max_connections(int index, unsigned long max)
     return 0;
 }
 
-/* 
+/*
  * Nie trzeba semafora, poniewaz operacje na liczbach 32-bit sa atomowe
  */
 int mod_cband_set_remote_last_refresh(int index, unsigned long time)
@@ -1481,7 +1481,7 @@ int mod_cband_set_remote_last_refresh(int index, unsigned long time)
     return 0;
 }
 
-/* 
+/*
  * Nie trzeba semafora, poniewaz operacje na liczbach 32-bit sa atomowe
  */
 int mod_cband_set_remote_total_connections(int index, unsigned long set)
@@ -1494,7 +1494,7 @@ int mod_cband_set_remote_total_connections(int index, unsigned long set)
     return 0;
 }
 
-/* 
+/*
  * Nie trzeba semafora, poniewaz operacje na liczbach 32-bit sa atomowe
  */
 int mod_cband_get_remote_total_connections(int index)
@@ -1510,12 +1510,12 @@ float mod_cband_get_remote_connections_speed_lock(int index)
     unsigned long time_now;
     float time_delta;
     float rps = 0;
-    
+
     if (index < 0)
 	return 0;
 
     time_now = apr_time_now();
-    
+
     /* BEGIN CRITICAL SECTION */
     mod_cband_sem_down(config->remote_hosts.sem_id);
     time_delta = (float)(time_now - config->remote_hosts.hosts[index].remote_last_refresh) / 1e6;
@@ -1541,7 +1541,7 @@ int mod_cband_change_remote_total_connections_lock(int index, unsigned long diff
     return 0;
 }
 
-/* 
+/*
  * Nie trzeba semafora, poniewaz operacje na liczbach 32-bit sa atomowe
  */
 unsigned long mod_cband_get_remote_connection_time(int index)
@@ -1552,18 +1552,18 @@ unsigned long mod_cband_get_remote_connection_time(int index)
     return config->remote_hosts.hosts[index].remote_last_time;
 }
 
-/* 
+/*
  * Nie trzeba semafora, poniewaz operacje na liczbach 32-bit sa atomowe
  */
 int mod_cband_get_remote_connections(int index)
 {
     if (index < 0)
 	return 0;
-	
+
     return config->remote_hosts.hosts[index].remote_conn;
 }
 
-/* 
+/*
  * Nie trzeba semafora, poniewaz operacje na liczbach 32-bit sa atomowe
  */
 int mod_cband_remove_remote_host(int index)
@@ -1589,15 +1589,15 @@ int mod_cband_get_dst_speed_lock(mod_cband_virtualhost_config_entry *entry, mod_
         /* BEGIN CRITICAL SECTION */
 	mod_cband_sem_down(config->sem_id);
         virtualhost_kbps     = entry->shmem_data->remote_speed.kbps;
-	virtualhost_rps      = entry->shmem_data->remote_speed.rps;	
-	virtualhost_max_conn = entry->shmem_data->remote_speed.max_conn;	
+	virtualhost_rps      = entry->shmem_data->remote_speed.rps;
+	virtualhost_max_conn = entry->shmem_data->remote_speed.max_conn;
         mod_cband_sem_up(config->sem_id);
 	/* BEGIN CRITICAL SECTION */
 
 	if (dst >= 0 && dst <= DST_CLASS) {
 	    if (entry->virtual_class_speed[dst].kbps > 0)
 		virtualhost_kbps = entry->virtual_class_speed[dst].kbps;
-		
+
 	    if (entry->virtual_class_speed[dst].rps > 0)
 		virtualhost_rps  = entry->virtual_class_speed[dst].rps;
 
@@ -1610,15 +1610,15 @@ int mod_cband_get_dst_speed_lock(mod_cband_virtualhost_config_entry *entry, mod_
         /* BEGIN CRITICAL SECTION */
 	mod_cband_sem_down(config->sem_id);
         user_kbps     = entry_user->shmem_data->remote_speed.kbps;
-	user_rps      = entry_user->shmem_data->remote_speed.rps;	
-	user_max_conn = entry_user->shmem_data->remote_speed.max_conn;	
+	user_rps      = entry_user->shmem_data->remote_speed.rps;
+	user_max_conn = entry_user->shmem_data->remote_speed.max_conn;
         mod_cband_sem_up(config->sem_id);
 	/* BEGIN CRITICAL SECTION */
-	
+
 	if (dst >= 0 && dst <= DST_CLASS) {
 	    if (entry_user->user_class_speed[dst].kbps > 0)
 		user_kbps = entry_user->user_class_speed[dst].kbps;
-	    
+
 	    if (entry_user->user_class_speed[dst].rps > 0)
 		user_rps  = entry_user->user_class_speed[dst].rps;
 
@@ -1628,7 +1628,7 @@ int mod_cband_get_dst_speed_lock(mod_cband_virtualhost_config_entry *entry, mod_
     }
 
     if (remote_kbps != NULL) {
-	if ((user_kbps > 0) && (virtualhost_kbps > user_kbps)) 
+	if ((user_kbps > 0) && (virtualhost_kbps > user_kbps))
 	    *remote_kbps = user_kbps;
         else
 	if (virtualhost_kbps > 0)
@@ -1638,7 +1638,7 @@ int mod_cband_get_dst_speed_lock(mod_cband_virtualhost_config_entry *entry, mod_
     }
 
     if (remote_rps != NULL) {
-	if ((user_rps > 0) && (virtualhost_rps > user_rps)) 
+	if ((user_rps > 0) && (virtualhost_rps > user_rps))
 	    *remote_rps = virtualhost_rps;
         else
 	if (virtualhost_rps > 0)
@@ -1648,7 +1648,7 @@ int mod_cband_get_dst_speed_lock(mod_cband_virtualhost_config_entry *entry, mod_
     }
 
     if (remote_max_conn != NULL) {
-    	if ((user_max_conn > 0) && (virtualhost_max_conn > user_max_conn)) 
+    	if ((user_max_conn > 0) && (virtualhost_max_conn > user_max_conn))
 	    *remote_max_conn = virtualhost_max_conn;
         else
 	if (virtualhost_max_conn > 0)
@@ -1656,11 +1656,11 @@ int mod_cband_get_dst_speed_lock(mod_cband_virtualhost_config_entry *entry, mod_
         else
     	    *remote_max_conn = user_max_conn;
     }
-    
+
     return 0;
 }
 
-/* 
+/*
  * Nie trzeba semafora, poniewaz operacje na liczbach 32-bit sa atomowe
  */
 int mod_cband_get_score(server_rec *s, char *path, unsigned long long *val, int dst, mod_cband_shmem_data *shmem_data)
@@ -1672,7 +1672,7 @@ int mod_cband_get_score(server_rec *s, char *path, unsigned long long *val, int 
 	*val = shmem_data->total_usage.total_bytes;
     else
 	*val = shmem_data->total_usage.class_bytes[dst];
-    
+
     return 0;
 }
 
@@ -1685,26 +1685,26 @@ int mod_cband_get_score_all(server_rec *s, char *path, mod_cband_scoreboard_entr
     apr_file_t *fd;
     apr_size_t nbuf;
     apr_pool_t *subpool;
-    
+
     if (path == NULL || val == NULL)
 	return -1;
-    
+
     apr_pool_create(&subpool, config->p);
-    
+
     if ((apr_file_open(&fd, path, APR_READ | APR_BINARY, 0, subpool)) != APR_SUCCESS) {
 	apr_pool_destroy(subpool);
 	return -1;
     }
-    
+
     nbuf = sizeof(mod_cband_scoreboard_entry);
     apr_file_read(fd, val, &nbuf);
     apr_file_close(fd);
     apr_pool_destroy(subpool);
-    
+
     return 0;
 }
 
-/* 
+/*
  * semafor opuszczany w mod_cband_save_score_cache i mod_cband_flush_score_lock
  */
 int mod_cband_save_score(char *path, mod_cband_scoreboard_entry *scoreboard)
@@ -1712,28 +1712,28 @@ int mod_cband_save_score(char *path, mod_cband_scoreboard_entry *scoreboard)
     apr_file_t *fd;
     apr_size_t nbuf;
     apr_pool_t *subpool;
-    
+
     if (path == NULL || scoreboard == NULL || scoreboard->was_request == 0)
 	return -1;
-	
+
     apr_pool_create(&subpool, config->p);
 
     if ((apr_file_open(&fd, path,
 		APR_CREATE | APR_READ | APR_WRITE | APR_BINARY, APR_UREAD | APR_UWRITE, subpool)) != APR_SUCCESS) {
-	
+
 	fprintf(stderr, "apache2_mod_cband: cannot open scoreboard file %s\n", path);
 	fflush(stderr);
-	
+
 	return -1;
     }
-   
+
     apr_file_lock(fd, APR_FLOCK_EXCLUSIVE);
     nbuf = sizeof(mod_cband_scoreboard_entry);
     apr_file_write(fd, scoreboard, &nbuf);
     apr_file_unlock(fd);
     apr_file_close(fd);
     apr_pool_destroy(subpool);
-    
+
     return 0;
 }
 
@@ -1744,16 +1744,16 @@ int mod_cband_flush_score_lock(char *path, mod_cband_scoreboard_entry *scoreboar
 
     /* BEGIN CRITICAL SECTION */
     mod_cband_sem_down(config->sem_id);
-    
+
     scoreboard->was_request = 1;
     if (--(scoreboard->score_flush_count) <= 0) {
 	mod_cband_save_score(path, scoreboard);
 	scoreboard->score_flush_count = config->score_flush_period;
     }
-    
+
     mod_cband_sem_up(config->sem_id);
-    /* END CRITICAL SECTION */        
-    
+    /* END CRITICAL SECTION */
+
     return 0;
 }
 
@@ -1777,11 +1777,11 @@ int mod_cband_clear_score_lock(mod_cband_scoreboard_entry *scoreboard)
     if (scoreboard == NULL)
 	return -1;
 
-    /* BEGIN CRITICAL SECTION */        
+    /* BEGIN CRITICAL SECTION */
     mod_cband_sem_down(config->sem_id);
-    memset(scoreboard, 0, sizeof(mod_cband_scoreboard_entry));    
+    memset(scoreboard, 0, sizeof(mod_cband_scoreboard_entry));
     mod_cband_sem_up(config->sem_id);
-    /* END CRITICAL SECTION */        
+    /* END CRITICAL SECTION */
 
     return 0;
 }
@@ -1805,7 +1805,7 @@ int mod_cband_update_score_cache(server_rec *s)
         if ((entry_user = entry_user->next) == NULL)
 	    break;
     }
-    
+
     return OK;
 }
 
@@ -1827,7 +1827,7 @@ int mod_cband_save_score_cache(void)
         if ((entry_user = entry_user->next) == NULL)
 	    break;
     }
-    
+
     return OK;
 }
 
@@ -1845,7 +1845,7 @@ int mod_cband_set_start_time(mod_cband_scoreboard_entry *scoreboard, unsigned lo
 	return 0;
 
     scoreboard->start_time = start_time;
-    
+
     return 0;
 }
 
@@ -1868,8 +1868,8 @@ int mod_cband_get_speed_lock(mod_cband_shmem_data *shmem_data, float *bps, float
 	time_delta = PERIOD_LEN;
 
     if (bps != NULL)
-	*bps = ((float)(shmem_data->old_TX * 8)) / time_delta;    
-    
+	*bps = ((float)(shmem_data->old_TX * 8)) / time_delta;
+
     if (rps != NULL)
 	*rps = ((float)(shmem_data->old_conn)) / time_delta;
 
@@ -1879,7 +1879,7 @@ int mod_cband_get_speed_lock(mod_cband_shmem_data *shmem_data, float *bps, float
     return 0;
 }
 
-/* 
+/*
  * semafor opuszczany przez funkcje check_connections_speed
  */
 int mod_cband_get_real_speed(mod_cband_shmem_data *shmem_data, float *bps, float *rps)
@@ -1888,10 +1888,10 @@ int mod_cband_get_real_speed(mod_cband_shmem_data *shmem_data, float *bps, float
 	return -1;
 
     if (bps != NULL)
-	*bps = ((float)(shmem_data->current_TX * 8) / PERIOD_LEN);  
-    
+	*bps = ((float)(shmem_data->current_TX * 8) / PERIOD_LEN);
+
     if (rps != NULL)
-        *rps = ((float)(shmem_data->current_conn) / PERIOD_LEN);    
+        *rps = ((float)(shmem_data->current_conn) / PERIOD_LEN);
 
     return 0;
 }
@@ -1905,18 +1905,18 @@ int mod_cband_update_speed(mod_cband_shmem_data *shmem_data, unsigned long bytes
     unsigned long time_last_request;
     unsigned long time_now;
     unsigned long time_delta_real;
-    
+
     if (shmem_data == NULL)
 	return -1;
-    
+
     time_now          = apr_time_now();
     time_delta_real   = time_now - shmem_data->total_last_refresh;
     time_delta        = (time_now - shmem_data->total_last_refresh) / 1e6;
     time_last_request = (time_now - shmem_data->total_last_time) / 1e6;
-    
+
     if (bytes_served > 0)
 	shmem_data->current_TX += bytes_served;
-    
+
     if (new_connection) {
     	shmem_data->total_last_time = time_now;
         mod_cband_set_remote_request_time(remote_idx, time_now);
@@ -1924,26 +1924,26 @@ int mod_cband_update_speed(mod_cband_shmem_data *shmem_data, unsigned long bytes
         shmem_data->current_conn += new_connection;
     }
 
-    if (time_delta > PERIOD_LEN) {    
+    if (time_delta > PERIOD_LEN) {
 	shmem_data->total_last_refresh = time_now;
 	mod_cband_set_remote_total_connections(remote_idx, 0);
         mod_cband_set_remote_last_refresh(remote_idx, time_now);
 	shmem_data->time_delta   = time_delta_real;
     }
-    
+
     if (time_delta > PERIOD_LEN && time_delta < 2 * PERIOD_LEN) {
         shmem_data->old_TX       = shmem_data->current_TX;
 	shmem_data->old_conn     = shmem_data->current_conn;
         shmem_data->current_TX   = 0;
 	shmem_data->current_conn = 0;
-    } else 
+    } else
     if (time_delta >= 2 * PERIOD_LEN) {
 	shmem_data->old_TX       = shmem_data->current_TX;
 	shmem_data->old_conn     = shmem_data->current_conn;
         shmem_data->current_TX   = 0;
 	shmem_data->current_conn = 0;
     }
-        
+
     return 0;
 }
 
@@ -2025,7 +2025,7 @@ void mod_cband_check_virtualhost_refresh(mod_cband_virtualhost_config_entry *ent
 
     if (mod_cband_get_start_time(scoreboard) < 0)
     	mod_cband_set_start_time(scoreboard, sec);
-    
+
     if ((mod_cband_get_start_time(scoreboard) + entry_virtual->refresh_time) < sec) {
     	mod_cband_clear_score_lock(scoreboard);
 	mod_cband_set_normal_speed_lock(entry_virtual->shmem_data);
@@ -2044,7 +2044,7 @@ void mod_cband_check_user_refresh(mod_cband_user_config_entry *entry_user, unsig
 
     if (mod_cband_get_start_time(scoreboard) < 0)
     	mod_cband_set_start_time(scoreboard, sec);
-    
+
     if ((mod_cband_get_start_time(scoreboard) + entry_user->refresh_time) < sec) {
     	mod_cband_clear_score_lock(scoreboard);
 	mod_cband_set_normal_speed_lock(entry_user->shmem_data);
@@ -2075,22 +2075,22 @@ int mod_cband_reset_virtualhost(char *name)
 
     if (!strcasecmp(name, "all")) {
         entry = config->next_virtualhost;
-    
+
 	while(entry != NULL) {
 	    mod_cband_reset(entry->shmem_data);
 
 	    if (entry->next == NULL)
 		break;
-	    
+
 	    entry = entry->next;
         }
     } else {
 	sscanf(name, "%[^:]:%u:%u", virtualhost, &port, &line);
-	
+
 	if ((entry = mod_cband_get_virtualhost_entry_(virtualhost, (apr_port_t)port, line, 0)) != NULL)
 	    mod_cband_reset(entry->shmem_data);
     }
-    
+
     return 0;
 }
 
@@ -2103,24 +2103,24 @@ int mod_cband_reset_user(char *name)
 
     if (!strcasecmp(name, "all")) {
         entry = config->next_user;
-    
+
 	while(entry != NULL) {
 	    mod_cband_reset(entry->shmem_data);
-    
+
 	    if (entry->next == NULL)
 		break;
-	    
+
 	    entry = entry->next;
         }
     } else {
 	if ((entry = mod_cband_get_user_entry(name, NULL, 0)) != NULL)
 	    mod_cband_reset(entry->shmem_data);
     }
-    
+
     return 0;
 }
 
-unsigned long mod_cband_get_slice_limit(unsigned long start_time, unsigned long refresh_time, 
+unsigned long mod_cband_get_slice_limit(unsigned long start_time, unsigned long refresh_time,
 	unsigned long slice_len, unsigned long limit)
 {
     unsigned long slice_limit, slice;
@@ -2130,13 +2130,13 @@ unsigned long mod_cband_get_slice_limit(unsigned long start_time, unsigned long 
         slice_limit = (unsigned long)(((float)slice_len / refresh_time) * limit);
 	slice_no    = (((unsigned long)(apr_time_now() / 1e6) - start_time) / slice_len) + 1;
 	slice       = slice_no * slice_limit;
-	
+
 	if (slice > limit)
 	    slice = limit;
-	
+
 	return slice;
     }
-    
+
     return limit;
 }
 
@@ -2150,15 +2150,15 @@ void mod_cband_status_print_limit(request_rec *req, unsigned long limit, unsigne
 
     if (slice_limit == 0)
 	slice_limit = limit;
-        
+
     exceeded_r = 0xff;
     exceeded_g = 0x30;
     exceeded_b = 0x50;
     normal_r = 0x30;
     normal_g = 0xf0;
     normal_b = 0x30;
-        
-    if (limit == (unsigned long)0) 
+
+    if (limit == (unsigned long)0)
         ap_rprintf(req, "<td style=\"background-color: yellow\">U/U/%s</td>\n", mod_cband_create_traffic_size(req->pool, usage, unit, mult));
     else {
 	if (usage < limit) {
@@ -2176,12 +2176,12 @@ void mod_cband_status_print_limit(request_rec *req, unsigned long limit, unsigne
 	    g = exceeded_g;
 	    b = exceeded_b;
 	}
-    
+
 	if (usage < limit / 2)
 	    color = "black";
 	else
 	    color = "white";
-	    
+
 	ap_rprintf(req, "<td style=\"color: %s; background-color: #%02X%02X%02X\">%s/%s/%s</td>\n", color, r, g, b, mod_cband_create_traffic_size(req->pool, limit, unit, mult), mod_cband_create_traffic_size(req->pool, slice_limit, unit, mult), mod_cband_create_traffic_size(req->pool, usage, unit, mult));
     }
 }
@@ -2193,22 +2193,22 @@ void mod_cband_status_print_speed(request_rec *req, unsigned long limit, float u
     unsigned char r, g, b;
     const char *color;
     float u;
-    
+
     exceeded_r = 0xff;
     exceeded_g = 0x20;
     exceeded_b = 0x20;
     normal_r = 0xf0;
     normal_g = 0xa1;
     normal_b = 0xa1;
-        
-    if (limit == (unsigned long)0) 
+
+    if (limit == (unsigned long)0)
         ap_rprintf(req, "<td class=\"speed\">U/%0.2f</td>\n", usage);
     else {
 	if (usage < limit) {
 	    r = normal_r;
 	    g = normal_g;
 	    b = normal_b;
-	
+
 	    if (usage > 0) {
 		u = (float)usage / limit;
 		g -= (unsigned char)((float)(normal_g - exceeded_g) * u);
@@ -2224,7 +2224,7 @@ void mod_cband_status_print_speed(request_rec *req, unsigned long limit, float u
 	    color = "black";
 	else
 	    color = "white";
-    
+
 	ap_rprintf(req, "<td style=\"color: %s; background-color: #%02X%02X%02X\">%lu/%0.2f</td>\n", color, r, g, b, limit, usage);
     }
 }
@@ -2243,8 +2243,8 @@ void mod_cband_status_print_connections(request_rec *req, unsigned long limit, u
     normal_r = 0xb4;
     normal_g = 0xbf;
     normal_b = 0xff;
-        
-    if (limit == (unsigned long)0) 
+
+    if (limit == (unsigned long)0)
         ap_rprintf(req, "<td class=remote_odd>U/%lu</td>\n", usage);
     else {
 	if (usage < limit) {
@@ -2267,26 +2267,26 @@ void mod_cband_status_print_connections(request_rec *req, unsigned long limit, u
 	    color = "black";
 	else
 	    color = "white";
-    
+
 	ap_rprintf(req, "<td style=\"color: %s; background-color: #%02X%02X%02X\">%lu/%lu</td>\n", color, r, g, b, limit, usage);
     }
 }
 
 void mod_cband_status_print_virtualhost_row(request_rec *r, mod_cband_virtualhost_config_entry *entry,
 	int handler_type, int refresh, char *unit, unsigned long long *total_traffic) {
-    
+
     mod_cband_scoreboard_entry *virtual_usage;
     unsigned long slice_limit;
     float bps, rps;
     int i;
 
     virtual_usage = &entry->shmem_data->total_usage;
-	    
+
     ap_rputs("<tr>\n", r);
-    ap_rprintf(r, "<td><a href=\"http://%s\">%s</a>:%d:(%d)</td>\n", entry->virtual_name, entry->virtual_name, entry->virtual_port, entry->virtual_defn_line);	
+    ap_rprintf(r, "<td><a href=\"http://%s\">%s</a>:%d:(%d)</td>\n", entry->virtual_name, entry->virtual_name, entry->virtual_port, entry->virtual_defn_line);
     if (handler_type == CBAND_HANDLER_ALL)
 	ap_rprintf(r, "<td><a href=\"?reset=%s:%d:%d&amp;refresh=%d&amp;unit=%s\">reset</a></td>\n", entry->virtual_name, entry->virtual_port, entry->virtual_defn_line, refresh, unit);
-    ap_rprintf(r, "<td class=\"refresh\">%s</td>\n", mod_cband_create_period(r->pool, virtual_usage->start_time, entry->refresh_time));	
+    ap_rprintf(r, "<td class=\"refresh\">%s</td>\n", mod_cband_create_period(r->pool, virtual_usage->start_time, entry->refresh_time));
 
     slice_limit = mod_cband_get_slice_limit(entry->shmem_data->total_usage.start_time, entry->refresh_time, entry->slice_len, entry->virtual_limit);
     mod_cband_status_print_limit(r, entry->virtual_limit, (unsigned long)(virtual_usage->total_bytes / entry->virtual_limit_mult),
@@ -2305,27 +2305,27 @@ void mod_cband_status_print_virtualhost_row(request_rec *r, mod_cband_virtualhos
     mod_cband_status_print_connections(r, entry->shmem_data->curr_speed.max_conn, entry->shmem_data->total_conn);
 
     if (entry->virtual_user)
-        ap_rprintf(r, "<td>%s</td>\n", entry->virtual_user);	
+        ap_rprintf(r, "<td>%s</td>\n", entry->virtual_user);
     else
-	ap_rprintf(r, "<td>none</td>\n");	
+	ap_rprintf(r, "<td>none</td>\n");
 
     ap_rputs("</tr>\n", r);
-    
+
     *total_traffic = virtual_usage->total_bytes;
 }
 
 void mod_cband_status_print_user_row(request_rec *r, mod_cband_user_config_entry *entry_user,
 	int handler_type, int refresh, char *unit) {
-    
+
     mod_cband_scoreboard_entry *user_usage;
     unsigned long slice_limit;
     float bps, rps;
     int i;
 
     user_usage = &entry_user->shmem_data->total_usage;
-	    
+
     ap_rputs("<tr>\n", r);
-    ap_rprintf(r, "<td>%s</td>\n", entry_user->user_name);	
+    ap_rprintf(r, "<td>%s</td>\n", entry_user->user_name);
     if (handler_type == CBAND_HANDLER_ALL)
 	ap_rprintf(r, "<td><a href=\"?reset_user=%s&amp;refresh=%d&amp;unit=%s\">reset</a></td>\n", entry_user->user_name, refresh, unit);
     ap_rprintf(r, "<td class=\"refresh\">%s</td>\n", mod_cband_create_period(r->pool, user_usage->start_time, entry_user->refresh_time));
@@ -2361,13 +2361,13 @@ void mod_cband_status_print_virtualhost_XML_row(request_rec *r, mod_cband_virtua
 
     mod_cband_update_speed_lock(entry->shmem_data, 0, 0, -1);
     mod_cband_get_speed_lock(entry->shmem_data, &bps, &rps);
-	    
+
     ap_rprintf(r, "\t\t<virtualhost>\n");
     ap_rprintf(r, "\t\t\t<name>%s</name>\n", entry->virtual_name);
     ap_rprintf(r, "\t\t\t<port>%d</port>\n", entry->virtual_port);
     ap_rprintf(r, "\t\t\t<line>%d</line>\n", entry->virtual_defn_line);
     ap_rprintf(r, "\t\t\t<limits>\n");
- 	    
+
     ap_rprintf(r, "\t\t\t\t<total>%lu%s</total>\n", entry->virtual_limit,
 	      (entry->virtual_limit_mult == 1024 ? "KiB" : "KB"));
 
@@ -2401,28 +2401,28 @@ void mod_cband_status_print_virtualhost_XML_row(request_rec *r, mod_cband_virtua
     ap_rprintf(r, "\t\t\t</usages>\n");
 
     ap_rprintf(r, "<time_to_refresh>%s</time_to_refresh>", mod_cband_create_period(r->pool, virtual_usage->start_time, entry->refresh_time));
-    
+
     if (entry->virtual_user)
 	ap_rprintf(r, "\t\t\t<user>%s</user>\n", entry->virtual_user);
     else
-    	ap_rprintf(r, "\t\t\t<user>none</user>\n");	
+    	ap_rprintf(r, "\t\t\t<user>none</user>\n");
 
     if (entry->virtual_scoreboard)
-	ap_rprintf(r, "\t\t\t<scoreboard>%s</scoreboard>\n", entry->virtual_scoreboard);	
+	ap_rprintf(r, "\t\t\t<scoreboard>%s</scoreboard>\n", entry->virtual_scoreboard);
     else
-    	ap_rprintf(r, "\t\t\t<scoreboard>none</scoreboard>\n");	
+    	ap_rprintf(r, "\t\t\t<scoreboard>none</scoreboard>\n");
 
     if (entry->virtual_limit_exceeded)
-	ap_rprintf(r, "\t\t\t<limit_exceeded_URL>%s</limit_exceeded_URL>\n", entry->virtual_limit_exceeded);	
+	ap_rprintf(r, "\t\t\t<limit_exceeded_URL>%s</limit_exceeded_URL>\n", entry->virtual_limit_exceeded);
     else
-    	ap_rprintf(r, "\t\t\t<limit_exceeded_URL>none</limit_exceeded_URL>\n");	
+    	ap_rprintf(r, "\t\t\t<limit_exceeded_URL>none</limit_exceeded_URL>\n");
 
     ap_rprintf(r, "\t\t</virtualhost>\n");
 }
 
 void mod_cband_status_print_user_XML_row(request_rec *r, mod_cband_user_config_entry *entry_user,
 	int handler_type) {
-    
+
     float bps, rps;
     mod_cband_class_config_entry *entry_class;
     mod_cband_scoreboard_entry *user_usage;
@@ -2432,8 +2432,8 @@ void mod_cband_status_print_user_XML_row(request_rec *r, mod_cband_user_config_e
 
     mod_cband_update_speed_lock(entry_user->shmem_data, 0, 0, -1);
     mod_cband_get_speed_lock(entry_user->shmem_data, &bps, &rps);
-    
-    ap_rprintf(r, "\t\t<%s>\n", entry_user->user_name);	
+
+    ap_rprintf(r, "\t\t<%s>\n", entry_user->user_name);
     ap_rprintf(r, "\t\t\t<limits>\n");
     ap_rprintf(r, "\t\t\t\t<total>%lu%s</total>\n", entry_user->user_limit,
     (entry_user->user_limit_mult == 1024 ? "KiB" : "KB"));
@@ -2446,7 +2446,7 @@ void mod_cband_status_print_user_XML_row(request_rec *r, mod_cband_user_config_e
 	i++;
         entry_class = entry_class->next;
     }
-    
+
     ap_rprintf(r, "\t\t\t\t<kbps>%lu</kbps>\n", entry_user->shmem_data->curr_speed.kbps);
     ap_rprintf(r, "\t\t\t\t<rps>%lu</rps>\n", entry_user->shmem_data->curr_speed.rps);
     ap_rprintf(r, "\t\t\t\t<connections>%lu</connections>\n", entry_user->shmem_data->curr_speed.max_conn);
@@ -2471,19 +2471,19 @@ void mod_cband_status_print_user_XML_row(request_rec *r, mod_cband_user_config_e
     ap_rprintf(r, "<time_to_refresh>%s</time_to_refresh>", mod_cband_create_period(r->pool, user_usage->start_time, entry_user->refresh_time));
 
     if (entry_user->user_limit_exceeded)
-	ap_rprintf(r, "\t\t\t<limit_exceeded_URL>%s</limit_exceeded_URL>\n", entry_user->user_limit_exceeded);	
+	ap_rprintf(r, "\t\t\t<limit_exceeded_URL>%s</limit_exceeded_URL>\n", entry_user->user_limit_exceeded);
     else
-    	ap_rprintf(r, "\t\t\t<limit_exceeded_URL>none</limit_exceeded_URL>\n");	
-	    
+    	ap_rprintf(r, "\t\t\t<limit_exceeded_URL>none</limit_exceeded_URL>\n");
+
     if (entry_user->user_scoreboard)
-	ap_rprintf(r, "\t\t\t<scoreboard>%s</scoreboard>\n", entry_user->user_scoreboard);	
+	ap_rprintf(r, "\t\t\t<scoreboard>%s</scoreboard>\n", entry_user->user_scoreboard);
     else
-    	ap_rprintf(r, "\t\t\t<scoreboard>none</scoreboard>\n");	
+    	ap_rprintf(r, "\t\t\t<scoreboard>none</scoreboard>\n");
 
     ap_rprintf(r, "\t\t</%s>\n", entry_user->user_name);
 }
 
-static const char mod_cband_status_handler_style[] = 
+static const char mod_cband_status_handler_style[] =
 "\n<style type=\"text/css\">\n"
 "body 		{ font-family: sans-serif; font-size: 0.6em; }\n"
 "table		{ font-family: tachoma, helvetica, verdana, sans-serif; border: 1px solid #d0d0d0; }\n"
@@ -2502,7 +2502,7 @@ static const char mod_cband_status_handler_style[] =
 "div.footer	{ margin-top: 2.5em; text-align: center; font-size: smaller; }\n"
 "</style>\n\n";
 
-static const char mod_cband_status_handler_foot[] = 
+static const char mod_cband_status_handler_foot[] =
 "\n<div class=\"footer\"><br>\n"
 "<p><a href=\"http://cband.linux.pl\">mod_cband 0.9.7.5</a><br>\n"
 "Copyright 2005 by <a href=\"mailto: dembol _at_ cband.linux.pl\">Lukasz Dembinski</a><br>\n"
@@ -2539,15 +2539,15 @@ static int mod_cband_status_handler_HTML (request_rec *r, int handler_type)
 	arg = r->args;
 	while(*arg != 0) {
 	    val = ap_getword_nc(r->pool, &arg, '&');
-	    
+
 	    if (val == NULL)
 		break;
-	
+
 	    key = ap_getword_nc(r->pool, &val, '=');
-	
+
 	    if (key == NULL)
 		break;
-		
+
 	    apr_table_setn(r->notes, key, val);
 	}
     }
@@ -2568,27 +2568,27 @@ static int mod_cband_status_handler_HTML (request_rec *r, int handler_type)
 	    }
 	}
     }
-    
+
     if (refresh < 0)
 	refresh = DEFAULT_REFRESH;
-	
+
     if (handler_type == CBAND_HANDLER_ALL) {
 	if ((arg = (char *)apr_table_get(r->notes, "reset")) != NULL) {
     	    mod_cband_reset_virtualhost(arg);
-	
+
 	    apr_table_setn(r->headers_out, "Location", apr_psprintf(r->pool, "%s?refresh=%d&unit=%s", r->uri, refresh, unit));
 	    return HTTP_MOVED_PERMANENTLY;
 	}
 
 	if ((arg = (char *)apr_table_get(r->notes, "reset_user")) != NULL) {
     	    mod_cband_reset_user(arg);
-	
+
 	    apr_table_setn(r->headers_out, "Location", apr_psprintf(r->pool, "%s?refresh=%d&unit=%s", r->uri, refresh, unit));
 	    return HTTP_MOVED_PERMANENTLY;
 	}
     } else {
     	if ((entry_me = mod_cband_get_virtualhost_entry(r->server, r->server->module_config, 0)) != NULL) {
-	    if (entry_me->virtual_user != NULL)  
+	    if (entry_me->virtual_user != NULL)
 		entry_user_me = mod_cband_get_user_entry(entry_me->virtual_user, r->server->module_config, 0);
 	    else
 		entry_user_me = NULL;
@@ -2612,8 +2612,8 @@ static int mod_cband_status_handler_HTML (request_rec *r, int handler_type)
     ap_rputs("<h2 style=\"display: inline;\">Virtual hosts</h2>\n", r);
     ap_rprintf(r, "<p style=\"display: inline;\"><a href=\"?refresh=%d&amp;unit=%s\">[refresh]</a> &nbsp; <a href=\"?refresh=%d\">[human-readable]</a> <a href=\"?refresh=%d&amp;unit=G\">[GB]</a> <a href=\"?refresh=%d&amp;unit=M\">[MB]</a> <a href=\"?refresh=%d&amp;unit=K\">[KB]</a></p>\n", refresh, unit, refresh, refresh, refresh, refresh);
     ap_rputs("</div>\n", r);
-    
-    if (((handler_type == CBAND_HANDLER_ME) && (entry_me == NULL)) || 
+
+    if (((handler_type == CBAND_HANDLER_ME) && (entry_me == NULL)) ||
         ((handler_type == CBAND_HANDLER_ALL) && (config->next_virtualhost == NULL)))
 	ap_rputs("<p>There are no limits set for virtual hosts.</p>\n", r);
     else {
@@ -2624,32 +2624,32 @@ static int mod_cband_status_handler_HTML (request_rec *r, int handler_type)
 	    ap_rputs("<td>", r);
 	    ap_rprintf(r, "<a href=\"?reset=all&amp;refresh=%d&amp;unit=%s\">reset all</a></td>\n", refresh, unit);
 	}
-	
+
 	ap_rputs("<td>time to refresh</td>\n", r);
 	ap_rprintf(r,"<td>Total<br>Limit/Slice/Used</td>\n");
 	entry_class = config->next_class;
-	
+
 	i = 0;
 	while(entry_class != NULL) {
 	    ap_rprintf(r,"<td>%s<br>Limit/Slice/Used</td>\n", entry_class->class_name);
-	
+
 	    entry_class = entry_class->next;
             i++;
 	}
-	
+
 	for (; i < DST_CLASS; i++)
 	    ap_rprintf(r,"<td>Class %d<br>Limit/Slice/Used</td>\n",i);
-		
+
 	ap_rprintf(r,"<td>kbps<br>Limit/Current</td>\n");
 	ap_rprintf(r,"<td>rps<br>Limit/Current</td>\n");
 	ap_rprintf(r,"<td>Connections<br>Limit/Current</td>\n");
-	
+
 	ap_rputs("<td>user</td>\n", r);
 	ap_rputs("</tr>\n", r);
-	
+
 	current_speed_bps = 0;
 	current_speed_rps = 0;
-	if (handler_type == CBAND_HANDLER_ALL) {	
+	if (handler_type == CBAND_HANDLER_ALL) {
 	    entry = config->next_virtualhost;
 	    while(entry != NULL) {
 		mod_cband_check_virtualhost_refresh(entry, sec);
@@ -2657,11 +2657,11 @@ static int mod_cband_status_handler_HTML (request_rec *r, int handler_type)
 		total_traffic += traffic;
 		total_connections += entry->shmem_data->total_conn;
 		vhosts_number++;
-		
+
 		mod_cband_get_speed_lock(entry->shmem_data, &bps, &rps);
 		current_speed_bps += bps;
 		current_speed_rps += rps;
-	    	    
+
 		if ((entry = entry->next) == NULL)
 		    break;
 	    }
@@ -2673,17 +2673,17 @@ static int mod_cband_status_handler_HTML (request_rec *r, int handler_type)
 			mod_cband_check_virtualhost_refresh(entry, sec);
 		        mod_cband_status_print_virtualhost_row(r, entry, handler_type, refresh, unit, &traffic);
 		    }
-		    
+
 		    if ((entry = entry->next) == NULL)
 			break;
 		}
-	    } else	
+	    } else
 	    if (entry_me != NULL) {
 	    	mod_cband_check_virtualhost_refresh(entry_me, sec);
 	        mod_cband_status_print_virtualhost_row(r, entry_me, handler_type, refresh, unit, &traffic);
 	    }
 	}
-	
+
 	ap_rputs("</table>\n", r);
     }
 
@@ -2692,47 +2692,47 @@ static int mod_cband_status_handler_HTML (request_rec *r, int handler_type)
     ap_rprintf(r, "<p style=\"display: inline;\"><a href=\"?refresh=%d&amp;unit=%s\">[refresh]</a> &nbsp; <a href=\"?refresh=%d\">[human-readable]</a> <a href=\"?refresh=%d&amp;unit=G\">[GB]</a> <a href=\"?refresh=%d&amp;unit=M\">[MB]</a> <a href=\"?refresh=%d&amp;unit=K\">[KB]</a></p>\n", refresh, unit, refresh, refresh, refresh, refresh);
     ap_rputs("</div>\n", r);
 
-    if (((handler_type == CBAND_HANDLER_ME) && (entry_user_me == NULL)) || 
+    if (((handler_type == CBAND_HANDLER_ME) && (entry_user_me == NULL)) ||
         ((handler_type == CBAND_HANDLER_ALL) && (config->next_user == NULL)))
         ap_rputs("<p>There are no limits set for users.</p>\n", r);
     else {
 	ap_rputs("<table cellspacing=\"0\" cellpadding=\"0\">\n", r);
 	ap_rputs("<tr>\n<td>Username</td>\n", r);
-	
+
 	if (handler_type == CBAND_HANDLER_ALL) {
 	    ap_rputs("<td>", r);
 	    ap_rprintf(r, "<a href=\"?reset_user=all&amp;refresh=%d&amp;unit=%s\">reset all</a></td>\n", refresh, unit);
 	}
-	
-	ap_rputs("<td>time to refresh</td>\n", r);    
+
+	ap_rputs("<td>time to refresh</td>\n", r);
 	ap_rprintf(r,"<td>Total<br>Limit/Slice/Used</td>\n");
 	entry_class = config->next_class;
-	
+
 	i = 0;
 	while(entry_class != NULL) {
 	    ap_rprintf(r,"<td>%s<br>Limit/Slice/Used</td>\n", entry_class->class_name);
-	
+
 	    entry_class = entry_class->next;
             i++;
 	}
-	
+
 	for (; i < DST_CLASS; i++)
 	    ap_rprintf(r,"<td>Class %d<br>Limit/Slice/Used</td>\n",i);
 
 	ap_rprintf(r,"<td>kbps<br>Limit/Current</td>\n");
 	ap_rprintf(r,"<td>rps<br>Limit/Current</td>\n");
 	ap_rprintf(r,"<td>Connections<br>Limit/Current</td>\n");
-	
+
 	ap_rputs("</tr>\n", r);
-	
-	if (handler_type == CBAND_HANDLER_ALL) {	
+
+	if (handler_type == CBAND_HANDLER_ALL) {
 	    entry_user = config->next_user;
-	
+
 	    while(entry_user != NULL) {
 		mod_cband_check_user_refresh(entry_user, sec);
 		mod_cband_status_print_user_row(r, entry_user, handler_type, refresh, unit);
 		users_number++;
-		
+
 		if ((entry_user = entry_user->next) == NULL)
 		    break;
 	    }
@@ -2742,7 +2742,7 @@ static int mod_cband_status_handler_HTML (request_rec *r, int handler_type)
 		mod_cband_status_print_user_row(r, entry_user_me, handler_type, refresh, unit);
 	    }
 	}
-	
+
 	ap_rputs("</table>\n", r);
     }
 
@@ -2766,33 +2766,33 @@ static int mod_cband_status_handler_HTML (request_rec *r, int handler_type)
     time_now = apr_time_now();
     for (i = 0; i < MAX_REMOTE_HOSTS; i++) {
         time_delta = (time_now - config->remote_hosts.hosts[i].remote_last_time) / 1e6;
-	
+
 	if ((!config->remote_hosts.hosts[i].used) || ((time_delta > MAX_REMOTE_HOST_LIFE) && (config->remote_hosts.hosts[i].remote_conn <= 0)))
 	    continue;
-    
-	if (handler_type != CBAND_HANDLER_ALL) {	
+
+	if (handler_type != CBAND_HANDLER_ALL) {
 	    ok = 0;
 
 	    if ((entry_user_me != NULL) && (entry_user_me->user_name != NULL)) {
-	    
+
 		entry = config->next_virtualhost;
 	        while(entry != NULL) {
-		
-		    if ((entry->virtual_name != NULL) && (config->remote_hosts.hosts[i].virtual_name != NULL) && 
+
+		    if ((entry->virtual_name != NULL) && (config->remote_hosts.hosts[i].virtual_name != NULL) &&
 		        (entry->virtual_user != NULL) &&
 			(!strcasecmp(entry->virtual_name, config->remote_hosts.hosts[i].virtual_name)) &&
 			(!strcasecmp(entry_user_me->user_name, entry->virtual_user))) {
 			ok = 1;
 			break;
 		    }
-		    
+
 		    if ((entry = entry->next) == NULL)
 			break;
 		}
-	    } else 
+	    } else
 	    if (!strcasecmp(r->server->server_hostname, config->remote_hosts.hosts[i].virtual_name))
 		ok = 1;
-	    
+
 	    if (!ok)
 		continue;
 	}
@@ -2804,16 +2804,16 @@ static int mod_cband_status_handler_HTML (request_rec *r, int handler_type)
 	    odd_str = "odd";
 	    odd = 0;
 	}
-	    	    
+
 	remote_addr.s_addr = config->remote_hosts.hosts[i].remote_addr;
         ap_rputs("<tr>", r);
 	ap_rprintf(r, "<td class=remote_%s>%s</td>", odd_str, inet_ntoa((struct in_addr)remote_addr));
         ap_rprintf(r, "<td class=remote_%s>%s</td>", odd_str, config->remote_hosts.hosts[i].virtual_name);
 	mod_cband_status_print_connections(r, config->remote_hosts.hosts[i].remote_max_conn, config->remote_hosts.hosts[i].remote_conn);
-	
+
 	ap_rprintf(r, "<td class=remote_%s>%lu</td>", odd_str, config->remote_hosts.hosts[i].remote_kbps);
 	ap_rputs("</tr>", r);
-	
+
 	if ((time_delta > (MAX_REMOTE_HOST_LIFE / 3)) && (config->remote_hosts.hosts[i].remote_conn <= 0))
 	    mod_cband_set_remote_current_speed(i, 0);
 
@@ -2822,7 +2822,7 @@ static int mod_cband_status_handler_HTML (request_rec *r, int handler_type)
     ap_rputs("</td>", r);
 
     ap_rputs("<td valign=top>", r);
-    if (handler_type == CBAND_HANDLER_ALL) {	
+    if (handler_type == CBAND_HANDLER_ALL) {
         ap_rputs("<div class=\"section\">", r);
         ap_rputs("<br><h2 style=\"display: inline;\">Server summary</h2>\n", r);
 	ap_rprintf(r, "<p style=\"display: inline;\"><a href=\"?refresh=%d&amp;unit=%s\">[refresh]</a> &nbsp; <a href=\"?refresh=%d\">[human-readable]</a> <a href=\"?refresh=%d&amp;unit=G\">[GB]</a> <a href=\"?refresh=%d&amp;unit=M\">[MB]</a> <a href=\"?refresh=%d&amp;unit=K\">[KB]</a></p>\n", refresh, unit, refresh, refresh, refresh, refresh);
@@ -2867,7 +2867,7 @@ static int mod_cband_status_handler_HTML (request_rec *r, int handler_type)
 
     ap_rputs(mod_cband_status_handler_foot, r);
     ap_rputs("</body>\n</html>\n", r);
-    
+
     return OK;
 }
 
@@ -2882,7 +2882,7 @@ static int mod_cband_status_handler_XML (request_rec *r, int handler_type)
 
     if (handler_type == CBAND_HANDLER_ME) {
     	if ((entry_me = mod_cband_get_virtualhost_entry(r->server, r->server->module_config, 0)) != NULL) {
-	    if (entry_me->virtual_user != NULL)  
+	    if (entry_me->virtual_user != NULL)
 	       entry_user_me = mod_cband_get_user_entry(entry_me->virtual_user, r->server->module_config, 0);
 	}
     }
@@ -2895,17 +2895,17 @@ static int mod_cband_status_handler_XML (request_rec *r, int handler_type)
     ap_rputs("<?xml version=\"1.0\" encoding=\"iso-8859-1\"?>\n", r);
     ap_rputs("<mod_cband>\n", r);
     ap_rputs("\t<Server>\n", r);
-    ap_rprintf(r, "\t\t<uptime>%s</uptime>\n", mod_cband_create_time(r->pool, uptime));    
+    ap_rprintf(r, "\t\t<uptime>%s</uptime>\n", mod_cband_create_time(r->pool, uptime));
     ap_rputs("\t</Server>\n", r);
-    
+
     ap_rputs("\t<Virtualhosts>\n", r);
-    if (handler_type == CBAND_HANDLER_ALL) {	
+    if (handler_type == CBAND_HANDLER_ALL) {
         entry = config->next_virtualhost;
-    
+
 	while(entry != NULL) {
     	    mod_cband_check_virtualhost_refresh(entry, sec);
 	    mod_cband_status_print_virtualhost_XML_row(r, entry, handler_type);
-	    	    
+
 	    if ((entry = entry->next) == NULL)
 		break;
 	}
@@ -2917,27 +2917,27 @@ static int mod_cband_status_handler_XML (request_rec *r, int handler_type)
 		    mod_cband_check_virtualhost_refresh(entry, sec);
 		    mod_cband_status_print_virtualhost_XML_row(r, entry, handler_type);
 		}
-		    
+
 		if ((entry = entry->next) == NULL)
 		    break;
 	    }
-	} else	
+	} else
 	if (entry_me != NULL) {
 	    mod_cband_check_virtualhost_refresh(entry_me, sec);
 	    mod_cband_status_print_virtualhost_XML_row(r, entry_me, handler_type);
 	}
     }
-	
+
     ap_rputs("\t</Virtualhosts>\n", r);
     ap_rputs("\t<Users>\n", r);
 
-    if (handler_type == CBAND_HANDLER_ALL) {	
+    if (handler_type == CBAND_HANDLER_ALL) {
         entry_user = config->next_user;
-	
+
 	while(entry_user != NULL) {
 	    mod_cband_check_user_refresh(entry_user, sec);
 	    mod_cband_status_print_user_XML_row(r, entry_user, handler_type);
-	    
+
 	    if ((entry_user = entry_user->next) == NULL)
 		break;
 	}
@@ -2947,7 +2947,7 @@ static int mod_cband_status_handler_XML (request_rec *r, int handler_type)
 	    mod_cband_status_print_user_XML_row(r, entry_user_me, handler_type);
 	}
     }
-	
+
     ap_rputs("\t</Users>\n", r);
     ap_rputs("</mod_cband>", r);
 
@@ -2980,29 +2980,29 @@ int mod_cband_check_connections_speed(mod_cband_virtualhost_config_entry *entry,
     do {
         /* BEGIN CRITICAL SECTION */
 	mod_cband_sem_down(config->sem_id);
-    
+
         if (entry != NULL) {
-	
-	    mod_cband_update_speed(entry->shmem_data, 0, 0, remote_idx);            
-	    if ((entry->shmem_data->curr_speed.max_conn > 0) && 
+
+	    mod_cband_update_speed(entry->shmem_data, 0, 0, remote_idx);
+	    if ((entry->shmem_data->curr_speed.max_conn > 0) &&
 		(entry->shmem_data->total_conn >= entry->shmem_data->curr_speed.max_conn)) {
-		    
+
 		    mod_cband_sem_up(config->sem_id);
 		    /* END CRITICAL SECTION */
 
 		    return HTTP_SERVICE_UNAVAILABLE;
 		}
-	    
+
             mod_cband_get_real_speed(entry->shmem_data, NULL, &virtualhost_rps);
 	    virtualhost_curr_rps = entry->shmem_data->curr_speed.rps;
 	}
-		
+
         if (entry_user != NULL) {
 
-	    mod_cband_update_speed(entry_user->shmem_data, 0, 0, remote_idx);            
-	    if ((entry_user->shmem_data->curr_speed.max_conn > 0) && 
+	    mod_cband_update_speed(entry_user->shmem_data, 0, 0, remote_idx);
+	    if ((entry_user->shmem_data->curr_speed.max_conn > 0) &&
 		(entry_user->shmem_data->total_conn >= entry_user->shmem_data->curr_speed.max_conn)) {
-		
+
 		mod_cband_sem_up(config->sem_id);
 		/* END CRITICAL SECTION */
 
@@ -3016,16 +3016,16 @@ int mod_cband_check_connections_speed(mod_cband_virtualhost_config_entry *entry,
 	if (remote_idx >= 0) {
 	    if (remote_max_conn > 0) {
 		remote_total_conn = mod_cband_get_remote_total_connections(remote_idx);
-	    
+
 		if ((remote_total_conn > 0) && (remote_max_conn <= remote_total_conn)) {
-		
+
 		    mod_cband_sem_up(config->sem_id);
 		    /* END CRITICAL SECTION */
 
 		    return HTTP_SERVICE_UNAVAILABLE;
 		}
-	    } 
-			
+	    }
+
 	    /* semafor na remote_hosts */
 	    remote_rps = mod_cband_get_remote_connections_speed_lock(remote_idx);
 	}
@@ -3043,10 +3043,10 @@ int mod_cband_check_connections_speed(mod_cband_virtualhost_config_entry *entry,
 	if (overlimit) {
 	    mod_cband_sem_up(config->sem_id);
 	    /* END CRITICAL SECTION */
-	    
+
 	    usleep(MAX_SLEEP_TIME + (rand() % MAX_SLEEP_TIME));
 	}
-        
+
 	mod_cband_sem_up(config->sem_id);
 	/* END CRITICAL SECTION */
 
@@ -3055,7 +3055,7 @@ int mod_cband_check_connections_speed(mod_cband_virtualhost_config_entry *entry,
 
     if (loops > MAX_DELAY_LOOPS)
 	return HTTP_SERVICE_UNAVAILABLE;
-	
+
     return OK;
 }
 
@@ -3075,7 +3075,7 @@ static int mod_cband_status_handler (request_rec *r)
 
     entry = mod_cband_get_virtualhost_entry(r->server, r->server->module_config, 0);
 
-    if ((entry != NULL) && (entry->virtual_user != NULL)) 
+    if ((entry != NULL) && (entry->virtual_user != NULL))
 	entry_user = mod_cband_get_user_entry(entry->virtual_user, r->server->module_config, 0);
 
     dst = mod_cband_get_dst(r);
@@ -3089,7 +3089,7 @@ static int mod_cband_status_handler (request_rec *r)
 	handler_type = CBAND_HANDLER_ALL;
     else
     	handler_type = CBAND_HANDLER_ME;
-	
+
     if ((r->args != NULL) && (!strcasecmp(r->args, "xml")))
 	return mod_cband_status_handler_XML(r, handler_type);
     else
@@ -3099,9 +3099,9 @@ static int mod_cband_status_handler (request_rec *r)
 int mod_cband_check_limit(request_rec *r, mod_cband_shmem_data *shmem_data, unsigned long limit, unsigned long slice_limit, unsigned int mult, unsigned long long usage, char *limit_exceeded)
 {
     /* Check if the bandwidth limit has been reached */
-    if ((limit > 0) && ((((unsigned long long)limit * (unsigned long long)mult) < usage) || 
+    if ((limit > 0) && ((((unsigned long long)limit * (unsigned long long)mult) < usage) ||
 			(((unsigned long long)slice_limit * (unsigned long long)mult) < usage))) {
-			
+
 	if (limit_exceeded != NULL) {
 	    apr_table_setn(r->headers_out, "Location", limit_exceeded);
 	    return HTTP_MOVED_PERMANENTLY;
@@ -3116,7 +3116,7 @@ int mod_cband_check_limit(request_rec *r, mod_cband_shmem_data *shmem_data, unsi
 	} else
 	    return config->default_limit_exceeded_code;
     }
-    
+
     return OK;
 }
 
@@ -3127,15 +3127,15 @@ int mod_cband_get_virtualhost_limits(mod_cband_virtualhost_config_entry *entry, 
 
     lu->limit       = entry->virtual_limit;
     lu->limit_mult  = entry->virtual_limit_mult;
-    lu->slice_limit = mod_cband_get_slice_limit(entry->shmem_data->total_usage.start_time, 
+    lu->slice_limit = mod_cband_get_slice_limit(entry->shmem_data->total_usage.start_time,
                       entry->refresh_time, entry->slice_len, entry->virtual_limit);
     lu->limit_exceeded = entry->virtual_limit_exceeded;
     lu->scoreboard  = entry->virtual_scoreboard;
-    
+
     if (dst >= 0) {
 	lu->class_limit        = entry->virtual_class_limit[dst];
 	lu->class_limit_mult   = entry->virtual_class_limit_mult[dst];
-	lu->class_slice_limit  = mod_cband_get_slice_limit(entry->shmem_data->total_usage.start_time, 
+	lu->class_slice_limit  = mod_cband_get_slice_limit(entry->shmem_data->total_usage.start_time,
                                  entry->refresh_time, entry->slice_len, entry->virtual_class_limit[dst]);
     }
 
@@ -3151,8 +3151,8 @@ int mod_cband_get_virtualhost_usages(request_rec *r, mod_cband_virtualhost_confi
 	return -1;
 
     mod_cband_get_score(r->server, entry->virtual_scoreboard, &lu->usage, -1, entry->shmem_data);
-    
-    if (dst >= 0) 
+
+    if (dst >= 0)
 	mod_cband_get_score(r->server, lu->scoreboard, &lu->class_usage, dst, entry->shmem_data);
 
     return 0;
@@ -3166,17 +3166,17 @@ int mod_cband_get_user_limits(mod_cband_user_config_entry *entry_user, mod_cband
     lu->limit          = entry_user->user_limit;
     lu->limit_mult     = entry_user->user_limit_mult;
     lu->limit_exceeded = entry_user->user_limit_exceeded;
-    lu->slice_limit    = mod_cband_get_slice_limit(entry_user->shmem_data->total_usage.start_time, 
+    lu->slice_limit    = mod_cband_get_slice_limit(entry_user->shmem_data->total_usage.start_time,
                          entry_user->refresh_time, entry_user->slice_len, entry_user->user_limit);
     lu->scoreboard     = entry_user->user_scoreboard;
-    
+
     if (dst >= 0) {
         lu->class_limit       = entry_user->user_class_limit[dst];
         lu->class_limit_mult  = entry_user->user_class_limit_mult[dst];
-        lu->class_slice_limit = mod_cband_get_slice_limit(entry_user->shmem_data->total_usage.start_time, 
+        lu->class_slice_limit = mod_cband_get_slice_limit(entry_user->shmem_data->total_usage.start_time,
 	                        entry_user->refresh_time, entry_user->slice_len, entry_user->user_class_limit[dst]);
     }
-    
+
     return 0;
 }
 
@@ -3192,7 +3192,7 @@ int mod_cband_get_user_usages(request_rec *r, mod_cband_user_config_entry *entry
 
     if (dst >= 0)
 	mod_cband_get_score(r->server, lu->scoreboard, &lu->class_usage, dst, entry_user->shmem_data);
-	
+
     return 0;
 }
 
@@ -3250,7 +3250,7 @@ static int mod_cband_request_handler (request_rec *r)
 
     mod_cband_get_virtualhost_limits(entry, &virtual_lu, dst);
     mod_cband_check_virtualhost_refresh(entry, time_now);
-    
+
     if ((entry->virtual_user != NULL) && ((entry_user = mod_cband_get_user_entry(entry->virtual_user, r->server->module_config, 0)) != NULL)) {
         mod_cband_get_user_limits(entry_user, &user_lu, dst);
 	mod_cband_check_user_refresh(entry_user, time_now);
@@ -3276,7 +3276,7 @@ static int mod_cband_request_handler (request_rec *r)
 
     if ((entry_user != NULL) && ((ret = mod_cband_check_limits(r, entry_user->shmem_data, &user_lu, dst)) != OK))
         return ret;
-        
+
     return DECLINED;
 }
 
@@ -3287,7 +3287,7 @@ float mod_cband_get_shared_speed_lock(mod_cband_virtualhost_config_entry *entry,
     if (entry == NULL)
         return -1;
 
-    if ((entry->shmem_data->curr_speed.kbps <= 0) && 
+    if ((entry->shmem_data->curr_speed.kbps <= 0) &&
 	((entry_user == NULL) || (entry_user->shmem_data->curr_speed.kbps <= 0)))
 	return -1;
 
@@ -3318,12 +3318,12 @@ float mod_cband_get_shared_speed_lock(mod_cband_virtualhost_config_entry *entry,
 	return next_user_bps;
 }
 
-int mod_cband_log_bucket(request_rec *r, mod_cband_virtualhost_config_entry *entry, 
+int mod_cband_log_bucket(request_rec *r, mod_cband_virtualhost_config_entry *entry,
 		    mod_cband_user_config_entry *entry_user, unsigned long bucket_bytes, int remote_idx)
 {
     unsigned long long bytes;
     int dst = -1;
-    
+
     bytes = (unsigned long long)bucket_bytes;
 
     if (r->method_number != M_GET)
@@ -3336,17 +3336,17 @@ int mod_cband_log_bucket(request_rec *r, mod_cband_virtualhost_config_entry *ent
 
     /* BEGIN CRITICAL SECTION */
     mod_cband_sem_down(config->sem_id);
-    mod_cband_update_speed(entry->shmem_data, bucket_bytes, 0, remote_idx);            
+    mod_cband_update_speed(entry->shmem_data, bucket_bytes, 0, remote_idx);
     mod_cband_update_score(entry->virtual_scoreboard, &bytes, dst, &(entry->shmem_data->total_usage));
-    	
+
     if (entry_user != NULL) {
-        mod_cband_update_speed(entry_user->shmem_data, bucket_bytes, 0, remote_idx);            
+        mod_cband_update_speed(entry_user->shmem_data, bucket_bytes, 0, remote_idx);
 	mod_cband_update_score(entry_user->user_scoreboard, &bytes, dst, &(entry_user->shmem_data->total_usage));
     }
-    
+
     mod_cband_sem_up(config->sem_id);
     /* END CRITICAL SECTION */
-    
+
     return 0;
 }
 
@@ -3360,7 +3360,7 @@ void mod_cband_change_total_connections_lock(mod_cband_virtualhost_config_entry 
 
     if ((entry_user != NULL) && (entry_user->shmem_data != NULL))
         mod_cband_safe_change(&entry_user->shmem_data->total_conn, diff);
-    
+
     mod_cband_sem_up(config->sem_id);
     /* END CRITICAL SECTION */
 }
@@ -3437,20 +3437,20 @@ static int mod_cband_filter(ap_filter_t *f, apr_bucket_brigade *bb)
 	ap_pass_brigade(f->next, bb);
 	return APR_SUCCESS;
     }
-    
+
     bbOut = apr_brigade_create(f->r->pool, c->bucket_alloc);
-    
+
     if ((entry = mod_cband_get_virtualhost_entry(f->r->server, f->r->server->module_config, 0)) != NULL) {
         mod_cband_flush_score_lock(entry->virtual_scoreboard, &(entry->shmem_data->total_usage));
 	remote_idx = mod_cband_get_remote_host(f->r->connection, 1, entry);
-        mod_cband_update_speed_lock(entry->shmem_data, 0, 1, remote_idx);            
+        mod_cband_update_speed_lock(entry->shmem_data, 0, 1, remote_idx);
     }
 
     dst = mod_cband_get_dst(f->r);
 
     if ((entry != NULL) && (entry->virtual_user != NULL) && ((entry_user = mod_cband_get_user_entry(entry->virtual_user, f->r->server->module_config, 0)) != NULL)) {
     	mod_cband_flush_score_lock(entry_user->user_scoreboard, &(entry_user->shmem_data->total_usage));
-    	mod_cband_update_speed_lock(entry_user->shmem_data, 0, 1, remote_idx);            
+    	mod_cband_update_speed_lock(entry_user->shmem_data, 0, 1, remote_idx);
     }
 
     mod_cband_get_dst_speed_lock(entry, entry_user, &max_remote_kbps, &remote_rps, NULL, dst);
@@ -3458,12 +3458,12 @@ static int mod_cband_filter(ap_filter_t *f, apr_bucket_brigade *bb)
     not_limit = 0;
     if ((mod_cband_get_shared_speed_lock(entry, entry_user) < 0) && (max_remote_kbps == 0))
 	not_limit = 1;
-	
+
     mod_cband_change_total_connections_lock(entry, entry_user, 1);
     mod_cband_change_remote_connections_lock(remote_idx, 1);
 
-    /* 
-     * Fairness Bandwidth Sharing algorithm 
+    /*
+     * Fairness Bandwidth Sharing algorithm
      */
     while(b != APR_BRIGADE_SENTINEL(bb)) {
 	if (f->r->connection->aborted) {
@@ -3471,7 +3471,7 @@ static int mod_cband_filter(ap_filter_t *f, apr_bucket_brigade *bb)
 	    mod_cband_change_remote_connections_lock(remote_idx, -1);
 	    return APR_SUCCESS;
 	}
-    
+
 	if (APR_BUCKET_IS_EOS(b) || APR_BUCKET_IS_FLUSH(b)) {
 	    APR_BUCKET_REMOVE(b);
 	    APR_BRIGADE_INSERT_TAIL(bbOut, b);
@@ -3481,7 +3481,7 @@ static int mod_cband_filter(ap_filter_t *f, apr_bucket_brigade *bb)
 	    return APR_SUCCESS;
 	}
 
-	measured_bps = 0;	
+	measured_bps = 0;
 	measured_bps_old = 0;
 	t1 = t2 = apr_time_now();
 	if (apr_bucket_read(b, &buf, &bytes_bucket, APR_NONBLOCK_READ) == APR_SUCCESS) {
@@ -3489,12 +3489,12 @@ static int mod_cband_filter(ap_filter_t *f, apr_bucket_brigade *bb)
 	    bytes = (int)bytes_bucket;
 	    while(bytes > 0) {
 		mod_cband_set_remote_request_time(remote_idx, apr_time_now());
-    		
+
 		if (!not_limit) {
 		    shared_bps = mod_cband_get_shared_speed_lock(entry, entry_user);
 		    remote_bps = (float)(max_remote_kbps * 1024);
 		    remote_connections = mod_cband_get_remote_connections(remote_idx);
-		
+
 		    if (remote_connections > 0)
 			remote_bps /= remote_connections;
 
@@ -3510,14 +3510,14 @@ static int mod_cband_filter(ap_filter_t *f, apr_bucket_brigade *bb)
 			slow_remote = MAX_SLOW_REMOTE_LOOPS;
 			measured_bps_old = measured_bps;
 		    }
-	
+
 		    if (slow_remote > 0) {
 			remote_bps = measured_bps_old;
 			slow_remote--;
 		    }
-		    
+
 		    remote_kbps = (remote_bps / 1024);
-		    next_bps    = remote_bps;	    
+		    next_bps    = remote_bps;
 
 		    shared_case = 0;
 		    if (((shared_bps > 0) && (shared_bps < remote_bps)) || (remote_bps <= 0)) {
@@ -3537,12 +3537,12 @@ static int mod_cband_filter(ap_filter_t *f, apr_bucket_brigade *bb)
 		    remote_kbps = 0;
 		    sleep_time  = 0;
 		    bytes_split = MAX_CHUNK_LEN;
-		    
+
 		    if (bytes_split > bytes)
 			bytes_split = bytes;
 		}
 
-		/* 
+		/*
 		 * jezeli mamy mniej do przeslania niz bytes_split bajtow w sekundzie
 		 * to wysylamy wszystko, ale czekamy tylko t = ile_bajtow/speed zeby male dokumenty
 		 * albo ich koncowki tez byly transportowane z zadana predkoscia
@@ -3552,7 +3552,7 @@ static int mod_cband_filter(ap_filter_t *f, apr_bucket_brigade *bb)
 		        sleep_time = (unsigned long)((float)((float)bytes / bytes_split) * 1e6);
 		    else
 		        sleep_time = 0;
-		
+
 		    bytes_split = bytes;
 		}
 
@@ -3560,15 +3560,15 @@ static int mod_cband_filter(ap_filter_t *f, apr_bucket_brigade *bb)
 		    div = (float)bytes_split / MAX_CHUNK_LEN;
 		    if (div > 0)
 			sleep_time /= div;
-			
+
 		    bytes_split = MAX_CHUNK_LEN;
 		}
-	    			
+
 		apr_bucket_split(b, bytes_split);
 		APR_BUCKET_REMOVE(b);
 		APR_BRIGADE_INSERT_TAIL(bbOut, b);
 		bytes -= bytes_split;
-		
+
 		t1m = apr_time_now();
 		ap_pass_brigade(f->next, bbOut);
 		t2m = apr_time_now();
@@ -3576,17 +3576,17 @@ static int mod_cband_filter(ap_filter_t *f, apr_bucket_brigade *bb)
 	    	b = APR_BRIGADE_FIRST(bb);
 		mod_cband_log_bucket(f->r, entry, entry_user, (unsigned long)bytes_split, remote_idx);
 
-		remote_bytes_sum += bytes_split;		
+		remote_bytes_sum += bytes_split;
 		t2 = apr_time_now();
 
 	        if (t2 > t1 + 1e6) {
 		    div = (float)(t2 - t1) / 1e6;
-		    
+
 		    if (div > 0)
-			remote_bytes_in_second = remote_bytes_sum / div; 
+			remote_bytes_in_second = remote_bytes_sum / div;
 		    else
 			remote_bytes_in_second = remote_bytes_sum;
-			
+
 		    mod_cband_set_remote_current_speed(remote_idx, (remote_bytes_in_second * 8) / 1024);
 		    t1 = apr_time_now();
 		    remote_bytes_sum = 0;
@@ -3613,7 +3613,7 @@ static int mod_cband_filter(ap_filter_t *f, apr_bucket_brigade *bb)
 		}
 	    }
 	}
-	
+
 	APR_BUCKET_REMOVE(b);
 	APR_BRIGADE_INSERT_TAIL(bbOut, b);
 	b = APR_BRIGADE_FIRST(bb);
@@ -3622,7 +3622,7 @@ static int mod_cband_filter(ap_filter_t *f, apr_bucket_brigade *bb)
 
     mod_cband_change_total_connections_lock(entry, entry_user, -1);
     mod_cband_change_remote_connections_lock(remote_idx, -1);
-    
+
     return APR_SUCCESS;
 }
 
@@ -3642,7 +3642,7 @@ static apr_status_t mod_cband_cleanup1(void *s)
     mod_cband_shmem_remove(config->remote_hosts.shmem_id);
     mod_cband_sem_remove(config->remote_hosts.sem_id);
     mod_cband_sem_remove(config->sem_id);
-    
+
     return APR_SUCCESS;
 }
 
@@ -3651,7 +3651,7 @@ static apr_status_t mod_cband_cleanup2(void *s)
     return APR_SUCCESS;
 }
 
-static apr_status_t mod_cband_post_config(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptmp, 
+static apr_status_t mod_cband_post_config(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptmp,
 					  server_rec *s)
 {
     /* BEGIN CRITICAL SECTION */
@@ -3664,7 +3664,7 @@ static apr_status_t mod_cband_post_config(apr_pool_t *p, apr_pool_t *plog, apr_p
 }
 
 /**
- * register mod_cband hooks 
+ * register mod_cband hooks
  */
 static void mod_cband_register_hooks (apr_pool_t *p)
 {
@@ -3676,7 +3676,7 @@ static void mod_cband_register_hooks (apr_pool_t *p)
 }
 
 /**
- * allocate config_header for mod_cband - this will store module 
+ * allocate config_header for mod_cband - this will store module
  * settings, as read from config file
  */
 static void *mod_cband_create_config(apr_pool_t *p, server_rec *s)
@@ -3695,12 +3695,12 @@ static void *mod_cband_create_config(apr_pool_t *p, server_rec *s)
 	config->shmem_seg_idx = -1;
 	config->default_limit_exceeded_code = HTTP_SERVICE_UNAVAILABLE;
 	config->max_chunk_len = MAX_CHUNK_LEN;
-	
+
 	mod_cband_remote_hosts_init();
 	mod_cband_sem_init(config->sem_id);
 	mod_cband_shmem_init();
-    } 
-    
+    }
+
     return (void *)config;
 }
 

@@ -5,21 +5,21 @@
  *
  * Copyright (c) 2005 Lukasz Dembinski <dembol@cband.linux.pl>
  * All Rights Reserved
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- *	     
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *		     
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
- *					 
+ *
  */
 
 #include "httpd.h"
@@ -77,7 +77,7 @@ union semun {
     struct semid_ds *buf;
     unsigned short *array;
     struct seminfo *__buf;
-};					            
+};
 #endif
 
 typedef struct mod_cband_virtualhost_config_entry mod_cband_virtualhost_config_entry;
@@ -141,8 +141,8 @@ struct mod_cband_user_config_entry {
     char *user_scoreboard;
     unsigned long user_limit;  				/* in units of *_mult bytes - total limit  */
     unsigned long user_class_limit[DST_CLASS]; 		/* in units of *_mult bytes - class limits */
-    unsigned long refresh_time;	
-    unsigned long slice_len;	
+    unsigned long refresh_time;
+    unsigned long slice_len;
     unsigned int user_limit_mult;
     unsigned int user_class_limit_mult[DST_CLASS];
     mod_cband_speed user_class_speed[DST_CLASS];
